@@ -435,8 +435,12 @@ void io_bench::do_read(void)
 {
 	int ret;
 	uint32_t count = 0;
+	struct stat stat;
 
-        pthread_barrier_wait(&tsync);
+    pthread_barrier_wait(&tsync);
+
+	fstat(fd, &stat);
+	printf("(do_read) file_size: %dMB\n", stat.st_size / (1024*1024));
 
 	if (per_thread_stats) {
 		time_stats_init(&stats, 1);

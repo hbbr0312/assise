@@ -62,9 +62,9 @@ MLFS_FLAGS += -DCONCURRENT
 #MLFS_FLAGS += -DMIGRATION
 #MLFS_FLAGS += -DEXPERIMENTAL
 
-#DEBUG = -g -O0
+DEBUG = -g -O0
 #DEBUG = -g3 -Ofast
-DEBUG = -O3
+# DEBUG = -O3
 
 # only include SPDK if ENABLE_MEMCPY_OFFLOAD flag is set
 
