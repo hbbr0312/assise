@@ -13,14 +13,32 @@ struct buffer_head *fs_bread(uint8_t dev, mlfs_fsblk_t block,
 {
 	int err = 0;
 	struct buffer_head *bh;
+	uint64_t tsc_start = 0;
+
+	if (enable_perf_stats) 
+		tsc_start = asm_rdtscp();
 
 	// FIXME: This is scalability bottlneck.
+
 	bh = sb_getblk(dev, block);
+
+	if (enable_perf_stats) 
+		g_perf_stats.extent_getblk_tsc += (asm_rdtscp() - tsc_start);
+
 	if (!bh)
 		return NULL;
 
-	if (buffer_uptodate(bh)) 
+	if (buffer_uptodate(bh))
 		goto out;
+
+// #ifdef KERNFS 
+// 	if (buffer_uptodate(bh)) {
+// 		printf("(fs_bread) bh uptodate! dirty: %d\n", buffer_dirty(bh));
+// 		goto out;
+// 	}
+// #endif
+// 	if (buffer_uptodate(bh))
+// 		printf("(fs_bread) bh uptodate! dirty: %d\n", buffer_dirty(bh));
 
 	err = bh_submit_read_sync_IO(bh);
 	if (bh->b_dev == g_ssd_dev)
@@ -40,7 +58,18 @@ struct buffer_head *fs_get_bh(uint8_t dev, mlfs_fsblk_t block,
 {
 	int err = 0;
 	struct buffer_head *bh;
+	uint64_t tsc_start = 0;
+
+	if (enable_perf_stats) 
+		tsc_start = asm_rdtscp();
+
+	// FIXME: This is scalability bottlneck.
+
 	bh = sb_getblk(dev, block);
+
+	if (enable_perf_stats) 
+		g_perf_stats.extent_getblk_tsc += (asm_rdtscp() - tsc_start);
+
 	if (ret)
 		*ret = err;
 

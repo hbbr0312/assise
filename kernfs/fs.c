@@ -221,6 +221,9 @@ void show_kernfs_stats(void)
 			((float)g_perf_stats.n_digest_skipped * 100.0) / (float)n_digest);
 	printf("path search    : %.3f ms\n",
 			g_perf_stats.path_search_tsc / (clock_speed_mhz * 1000.0));
+	printf("PATH TSC: %d cycles\n", g_perf_stats.path_search_tsc);
+	printf("get bh for extent : %u\n", g_perf_stats.extent_getblk_tsc);
+
 	printf("total migrated : %lu MB\n", g_perf_stats.total_migrated_mb);
 #ifdef MLFS_LEASE
 	printf("nr lease rpc (local)	: %lu\n", g_perf_stats.lease_rpc_local_nr);
@@ -1474,6 +1477,23 @@ static void digest_log_from_replay_list(uint8_t from_dev, int libfs_id, struct r
 #endif
 }
 
+/* 
+ *
+ * 1. syn_all_buffers
+ * 일단 log_id에 관계없이 dev-dax shared area에 해당하는 block_device에서
+ * bd_bh_dirty 리스트를 돌며 buffer_head를 mlfs_write해주고 
+ * b_count가 0이면 
+ * uptodate bit = 1, dirty bit = 0, bd_bh_freelist에 추가하고 dirty list에서 delete 
+ * 
+ * 2. for loop
+ * dev-dax에 해당하는 superblock에서 s_dirty_root의 log_id번째 원소인 rb_root를 찾아 iteration을 돎
+ * 이 red-black tree에는 dirty inode들이 저장되어 있는 거 같은데
+ * rb tree에서 pop하고 그 정보대로 buffer_head를 할당받아서 mlfs_write를 하는 것.
+ * 
+ * 3. store_all_bitmap
+ * bitmap block들을 persist (mlfs_write)
+ * 
+ */
 static int persist_dirty_objects_nvm(int log_id) 
 {
 	struct rb_node *node;

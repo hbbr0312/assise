@@ -806,6 +806,10 @@ static unsigned long mlfs_alloc_blocks_in_free_list(struct super_block *sb,
 	return num_blocks;
 }
 
+/* 
+ * super_block의 free_list들을 돌면서
+ * free_block의 갯수가 num보다 큰 free_list를 찾고 그것의 idx를 return
+ */
 static int mlfs_find_free_list(struct super_block *sb, 
 		unsigned int num, enum alloc_type a_type)
 {

@@ -91,6 +91,8 @@ class io_bench : public CThread
 		static test_mode_t get_test_mode(char *);
 		static void hexdump(void *mem, unsigned int len);
 		static void show_usage(const char *prog);
+		static void print_filesize(int fd);
+
 };
 
 io_bench::io_bench(int _id, unsigned long _file_size_bytes, 
@@ -300,6 +302,30 @@ void io_bench::do_write(void)
 	return ;
 }
 
+// print file size for debugging
+void io_bench::print_filesize(int fd) 
+{
+	struct stat stat;
+	off_t bytes;
+	int size;
+	int kilo_unit = 1024;
+	int mega_unit = kilo_unit*1024;
+	int giga_unit = mega_unit*1024;
+
+	fstat(fd, &stat);
+	bytes = stat.st_size;
+
+	printf("(iotest) file size: ");
+	if ((size = bytes / giga_unit) > 0)
+		printf("%dGB\n", size);
+	else if ((size = bytes / mega_unit) > 0)
+		printf("%dMB\n", size);
+	else if ((size = bytes / kilo_unit) > 0)
+		printf("%dKB\n", size);
+	else
+		printf("%dB\n", bytes);
+}
+
 void io_bench::do_read(void)
 {
 	int ret;
@@ -309,6 +335,8 @@ void io_bench::do_read(void)
 		time_stats_init(&stats, 1);
 		time_stats_start(&stats);
 	}
+
+	print_filesize(fd);
 
 	if (test_type == SEQ_READ || test_type == SEQ_WRITE_READ) {
 		for (unsigned long i = 0; i < file_size_bytes ; i += io_size) {

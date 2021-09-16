@@ -126,6 +126,9 @@ typedef struct mlfs_libfs_stats {
 	uint64_t lease_revoke_wait_tsc;
 	uint64_t local_contention_tsc;
 	uint64_t local_digestion_tsc;
+	//added
+	uint64_t extent_find_time;
+	uint64_t extent_getblk_tsc;
 } libfs_stat_t;
 
 extern struct lru g_fcache_head;

@@ -1693,7 +1693,7 @@ void handle_digest_response(char *ack_cmd)
 	mlfs_info("clear digesting state for log%s", "\n");
 	clear_digesting();
 
-	if (enable_perf_stats) 
-		show_libfs_stats();
+	// if (enable_perf_stats) 
+	// 	show_libfs_stats();
 }
 

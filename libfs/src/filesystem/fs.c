@@ -113,6 +113,9 @@ void show_libfs_stats(void)
 	printf("lease rpcs        : %u\n", g_perf_stats.lease_rpc_nr);
 	printf("lease lpcs        : %u\n", g_perf_stats.lease_lpc_nr);
 
+	printf("extent search     : %u\n", g_perf_stats.extent_find_time);
+	printf("get bh for extent : %u\n", g_perf_stats.extent_getblk_tsc);
+
 
 /*
 printf("wait on digest  (tsc)  : %lu \n", g_perf_stats.digest_wait_tsc);

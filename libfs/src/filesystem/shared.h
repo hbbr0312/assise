@@ -66,7 +66,7 @@ struct super_block
 	unsigned long *s_inode_bitmap;
 
 	// have an RB tree allocated for each LibFS process
-	struct rb_root s_dirty_root[g_n_max_libfs * 2];
+	struct rb_root s_dirty_root[g_n_max_libfs * 2]; // dirty inodes
 	uint64_t used_blocks;
 	uint64_t last_block_allocated;
 

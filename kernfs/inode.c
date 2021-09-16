@@ -48,6 +48,11 @@ int read_ondisk_inode(uint32_t inum, struct dinode *dip)
 	return 0;
 }
 
+/* 
+ * inum이 속하는 block_nr을 얻고 그거대로 buffer_head를 할당받아 초기화
+ * buffer_head에 write를 위한 정보들을 초기화시키고 
+ * 그 buffer_head로 storage에 write
+ */
 int write_ondisk_inode(struct inode *ip)
 {
 	int ret;

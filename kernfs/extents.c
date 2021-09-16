@@ -250,7 +250,7 @@ static void mlfs_free_blocks(handle_t *handle, struct inode *inode,
 		void *fake, mlfs_fsblk_t block, int count, int flags) 
 {
 	int ret;
-	struct buffer_head *bh, *tmp;
+	// struct buffer_head *bh, *tmp;
 	struct super_block *sb = get_inode_sb(handle->dev, inode);
 	UNUSED(flags);
 
@@ -2127,7 +2127,7 @@ static int mlfs_ext_zeroout(struct inode *inode, struct mlfs_extent *ex)
 static int mlfs_remove_blocks(handle_t *handle, struct inode *inode,
 		struct mlfs_extent *ex, unsigned long from, unsigned long to) 
 {
-	struct buffer_head *bh;
+	// struct buffer_head *bh;
 	int i;
 
 	if (from >= le32_to_cpu(ex->ee_block) &&
@@ -2842,6 +2842,10 @@ find_ext_path:
 	if (enable_perf_stats) 
 		tsc_start = asm_rdtscp();
 #endif
+#ifdef LIBFS
+	if (enable_perf_stats) 
+		tsc_start = asm_rdtscp();
+#endif
 
 	/* find extent for this block */
 	path = mlfs_find_extent(handle, inode, map->m_lblk, NULL, 0);
@@ -2854,6 +2858,10 @@ find_ext_path:
 #ifdef KERNFS
 	if (enable_perf_stats) 
 		g_perf_stats.path_search_tsc += (asm_rdtscp() - tsc_start);
+#endif
+#ifdef LIBFS
+	if (enable_perf_stats) 
+		g_perf_stats.extent_find_time += (asm_rdtscp() - tsc_start);
 #endif
 
 	depth = ext_depth(handle, inode);

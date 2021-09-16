@@ -58,7 +58,7 @@ char *test_file_name = "testfile";
 
 //#define ODIRECT
 #undef ODIRECT
-//#define VERIFY
+#define VERIFY
 
 typedef enum {SEQ_WRITE, SEQ_READ, SEQ_WRITE_READ, RAND_WRITE, RAND_READ, 
 	ZIPF_WRITE, ZIPF_READ, ZIPF_MIX, NONE} test_t;
@@ -110,6 +110,7 @@ class io_bench : public CThread
 		static test_mode_t get_test_mode(char *);
 		static void hexdump(void *mem, unsigned int len);
 		static void show_usage(const char *prog);
+		static void print_filesize(int fd);
 };
 
 io_bench::io_bench(int _id, unsigned long _file_size_bytes, 
@@ -431,17 +432,40 @@ void io_bench::do_write(void)
 	return ;
 }
 
+// print file size for debugging
+void io_bench::print_filesize(int fd) 
+{
+	struct stat stat;
+	off_t bytes;
+	int size;
+	int kilo_unit = 1024;
+	int mega_unit = kilo_unit*1024;
+	int giga_unit = mega_unit*1024;
+
+	fstat(fd, &stat);
+	bytes = stat.st_size;
+
+	printf("(iobench) file size: ");
+	if ((size = bytes / giga_unit) > 0)
+		printf("%dGB\n", size);
+	else if ((size = bytes / mega_unit) > 0)
+		printf("%dMB\n", size);
+	else if ((size = bytes / kilo_unit) > 0)
+		printf("%dKB\n", size);
+	else
+		printf("%dB\n", bytes);
+}
+
 void io_bench::do_read(void)
 {
 	int ret;
 	uint32_t count = 0;
-	struct stat stat;
 
     pthread_barrier_wait(&tsync);
 
-	fstat(fd, &stat);
-	printf("(do_read) file_size: %dMB\n", stat.st_size / (1024*1024));
-
+#ifdef VERIFY
+	print_filesize(fd);
+#endif
 	if (per_thread_stats) {
 		time_stats_init(&stats, 1);
 		time_stats_start(&stats);
@@ -474,7 +498,8 @@ void io_bench::do_read(void)
 					//hexdump(buf + j, 256);
 					printf("read data mismatch at %lu\n", i);
 					printf("expected %c read %c\n", (int)('0' + (i % 10)), buf[j]);
-					//exit(-1);
+					printf("FAIL!!!\n");
+					exit(-1);
 					break;
 				}
 			}

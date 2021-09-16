@@ -115,6 +115,10 @@ struct block_device *bdev_alloc_fast(uint8_t dev_id, int blocksize_bits)
 	return bdev;
 }
 
+/* 
+ * buffer_head alloc하고 
+ * block_device와 block_nr를 buffer_head 멤버에 저장하고 나머지 멤버는 0이나 NULL로 초기화
+ */
 static struct buffer_head *buffer_alloc_fast(struct block_device *bdev,
 		addr_t block_nr, uint8_t mode)
 {
@@ -168,6 +172,11 @@ static inline struct buffer_head *bh_alloc_add(uint8_t dev,
 	return bh;
 }
 
+/* 
+ * buffer_head를 할당받고 member를 초기화하고
+ * bh의 b_state dataRef bit를 1로 세팅하고
+ * bh의 b_count를 +1
+ */
 struct buffer_head *bh_get_sync_IO(uint8_t dev, addr_t block_nr, uint8_t mode)
 {
 	struct buffer_head *bh;
@@ -223,6 +232,9 @@ alloc:
 }
 #endif
 
+/* 
+ * buffer_head의 b_data로 storage에서 읽어옴 
+ */
 int bh_submit_read_sync_IO(struct buffer_head *bh)
 {
 	int ret;
@@ -750,6 +762,10 @@ static void attach_bh_to_freelist(struct buffer_head *bh)
 	}
 }
 
+/* 
+ * bh가 freelist에 속해있으면 detach from freelist
+ * bd_nr_free--
+ */
 static void detach_bh_from_freelist(struct buffer_head *bh)
 {
 	struct block_device *bdev = bh->b_bdev;
@@ -1027,6 +1043,12 @@ int write_dirty_buffer(struct buffer_head *bh)
 	return ret;
 }
 
+/*
+ * bdevice에 block_nr을 가지는 bh가 있는지 찾고
+ * 있으면 detach_from_freelist, bh->b_count ++ 
+ * 없으면 buffer_alloc, buffer_insert, bh->b_count ++
+ * buffer_head return
+ */
 struct buffer_head *__getblk(struct block_device *bdev, uint64_t block,
 					 int bsize)
 {
