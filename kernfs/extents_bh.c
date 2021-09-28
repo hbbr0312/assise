@@ -8,6 +8,8 @@ void fs_start_trans(struct super_block *sb) { UNUSED(sb); }
 
 void fs_stop_trans(struct super_block *sb) { UNUSED(sb); }
 
+void break_here(void) {;}
+
 struct buffer_head *fs_bread(uint8_t dev, mlfs_fsblk_t block,
 		int *ret)
 {
@@ -20,7 +22,7 @@ struct buffer_head *fs_bread(uint8_t dev, mlfs_fsblk_t block,
 
 	// FIXME: This is scalability bottlneck.
 
-	bh = sb_getblk(dev, block);
+	bh = sb_getblk_for_ext(dev, block);
 
 	if (enable_perf_stats) 
 		g_perf_stats.extent_getblk_tsc += (asm_rdtscp() - tsc_start);
@@ -30,15 +32,6 @@ struct buffer_head *fs_bread(uint8_t dev, mlfs_fsblk_t block,
 
 	if (buffer_uptodate(bh))
 		goto out;
-
-// #ifdef KERNFS 
-// 	if (buffer_uptodate(bh)) {
-// 		printf("(fs_bread) bh uptodate! dirty: %d\n", buffer_dirty(bh));
-// 		goto out;
-// 	}
-// #endif
-// 	if (buffer_uptodate(bh))
-// 		printf("(fs_bread) bh uptodate! dirty: %d\n", buffer_dirty(bh));
 
 	err = bh_submit_read_sync_IO(bh);
 	if (bh->b_dev == g_ssd_dev)
@@ -65,7 +58,7 @@ struct buffer_head *fs_get_bh(uint8_t dev, mlfs_fsblk_t block,
 
 	// FIXME: This is scalability bottlneck.
 
-	bh = sb_getblk(dev, block);
+	bh = sb_getblk_for_ext(dev, block);
 
 	if (enable_perf_stats) 
 		g_perf_stats.extent_getblk_tsc += (asm_rdtscp() - tsc_start);
@@ -82,17 +75,20 @@ struct buffer_head *fs_get_bh(uint8_t dev, mlfs_fsblk_t block,
 void fs_brelse(struct buffer_head *bh)
 {
 	fs_bh_freed++;
-	brelse(bh);
+	brelse_for_ext(bh);
 }
 
 void fs_mark_buffer_dirty(struct buffer_head *bh)
 {
 	mlfs_debug("buffer %lu is dirty\n", bh->b_blocknr);
+#ifdef USE_EXTENT_BH_CACHE
 	move_buffer_to_writeback(bh);
+#endif
 	set_buffer_uptodate(bh);
 	set_buffer_dirty(bh);
 }
 
+/* not used */
 void fs_bforget(struct buffer_head *bh)
 {
 	clear_buffer_uptodate(bh);

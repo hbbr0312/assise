@@ -61,6 +61,12 @@ static inline int put_bh_and_read(struct buffer_head *bh)
 	return __sync_sub_and_fetch(&bh->b_count, 1);
 }
 
+struct buffer_head *__getblk_for_ext(struct block_device *, uint64_t, int);
+static inline struct buffer_head *sb_getblk_for_ext(uint8_t dev,
+					    uint64_t block)
+{
+	return __getblk_for_ext(g_bdev[dev], block, g_block_size_bytes);
+}
 struct buffer_head *__getblk(struct block_device *, uint64_t, int);
 static inline struct buffer_head *sb_getblk(uint8_t dev,
 					    uint64_t block)
@@ -91,6 +97,7 @@ int submit_bh(int is_write, struct buffer_head *bh);
 int write_dirty_buffer(struct buffer_head *bh);
 int bh_submit_read(struct buffer_head *bh);
 void brelse(struct buffer_head *bh);
+void brelse_for_ext(struct buffer_head *bh);
 void wait_on_buffer(struct buffer_head *bh, int isread);
 void sync_all_buffers(struct block_device *bdev);
 void sync_writeback_buffers(struct block_device *bdev);

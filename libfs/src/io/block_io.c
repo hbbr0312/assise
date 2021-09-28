@@ -1074,6 +1074,36 @@ struct buffer_head *__getblk(struct block_device *bdev, uint64_t block,
 	return bh;
 }
 
+struct buffer_head *__getblk_for_ext(struct block_device *bdev, uint64_t block,
+					 int bsize)
+{
+	struct buffer_head *bh;
+
+#ifdef USE_EXTENT_BH_CACHE
+	bh = buffer_search(bdev, block);
+	if (bh) {
+		detach_bh_from_freelist(bh);
+		// comment out on purpose, otherwise dirty buffer still won't be written back
+		//remove_buffer_from_writeback(bh);
+		get_bh(bh);
+		return bh;
+	}
+#endif
+
+	/* buffer_alloc may perform synchronous writeback of dirty buffers */
+	bh = buffer_alloc(bdev, block, g_block_size_bytes);
+	if (bh == NULL)
+		return NULL;
+
+#ifdef USE_EXTENT_BH_CACHE
+	buffer_insert(bdev, bh);
+#endif
+
+	get_bh(bh);
+	return bh;
+}
+
+
 /*
  * Release the buffer_head.
  */
@@ -1099,6 +1129,36 @@ void brelse(struct buffer_head *bh)
 		move_buffer_to_writeback(bh);
 out:
 	return;
+}
+
+/* Release the buffer_head
+ * if use_extent_bh_caching:
+ *    brelse와 동일.
+ * else:
+ *    bh_dirty -> mlfs_write()
+ * 	  mlfs_free()
+ */
+void brelse_for_ext(struct buffer_head *bh)
+{
+#ifdef USE_EXTENT_BH_CACHE
+	return brelse(bh);
+#endif
+
+	int refcount;
+	if (bh == NULL)
+		return;
+	refcount = put_bh_and_read(bh);
+	if (refcount >= 1)
+		panic("(brelse_for_ext) bh refcount >= 1\n");
+
+	if (!trylock_buffer(bh))
+		return;
+
+	if (buffer_dirty(bh))
+		mlfs_write(bh);
+	
+	unlock_buffer(bh);
+	buffer_free(bh);
 }
 
 static void try_to_sync_buffers(struct block_device *bdev)

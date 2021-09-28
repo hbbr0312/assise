@@ -250,7 +250,6 @@ static void mlfs_free_blocks(handle_t *handle, struct inode *inode,
 		void *fake, mlfs_fsblk_t block, int count, int flags) 
 {
 	int ret;
-	// struct buffer_head *bh, *tmp;
 	struct super_block *sb = get_inode_sb(handle->dev, inode);
 	UNUSED(flags);
 
@@ -2127,7 +2126,6 @@ static int mlfs_ext_zeroout(struct inode *inode, struct mlfs_extent *ex)
 static int mlfs_remove_blocks(handle_t *handle, struct inode *inode,
 		struct mlfs_extent *ex, unsigned long from, unsigned long to) 
 {
-	// struct buffer_head *bh;
 	int i;
 
 	if (from >= le32_to_cpu(ex->ee_block) &&

@@ -1572,6 +1572,9 @@ int digest_logs(uint8_t from_dev, int libfs_id, int n_hdrs, addr_t start_blkno,
 
 	// digest log entries
 	for (i = 0 ; i < n_hdrs; i++) {
+		if (i== n_hdrs-1)
+			break_here();
+
 		loghdr_meta = read_log_header(from_dev, *loghdr_to_digest);
 		size = loghdr_meta->loghdr->nr_log_blocks;
 		
