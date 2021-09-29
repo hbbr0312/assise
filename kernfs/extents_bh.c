@@ -74,6 +74,7 @@ struct buffer_head *fs_get_bh(uint8_t dev, mlfs_fsblk_t block,
 
 void fs_brelse(struct buffer_head *bh)
 {
+	if (!bh) return;
 	fs_bh_freed++;
 	brelse_for_ext(bh);
 }

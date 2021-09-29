@@ -127,6 +127,7 @@ struct mlfs_ext_path {
 	struct mlfs_extent_idx *p_idx;
 	struct mlfs_extent_header *p_hdr;
 	struct buffer_head *p_bh;
+	char *p_buf;
 };
 
 /*
@@ -240,6 +241,18 @@ struct mlfs_map_blocks {
 #define EXT_MAX_INDEX(__hdr__)                                    \
 	(EXT_FIRST_INDEX((__hdr__)) + (__hdr__)->eh_max - 1)
 
+
+static inline char *getaddr(uint8_t devid, mlfs_fsblk_t pblk)
+{
+	return (char *) g_bdev[devid]->map_base_addr + (pblk * g_block_size_bytes);
+}
+
+static inline mlfs_fsblk_t getpblk(char *addr)
+{
+	return (mlfs_fsblk_t)((unsigned char *)addr - g_bdev[g_root_dev]->map_base_addr)/g_block_size_bytes;
+}
+
+
 static inline struct mlfs_extent_header *ext_inode_hdr(handle_t *handle, 
 		struct inode *inode)
 {
@@ -256,6 +269,11 @@ static inline struct mlfs_extent_header *ext_inode_hdr(handle_t *handle,
 static inline struct mlfs_extent_header *ext_block_hdr(struct buffer_head *bh)
 {
 	return (struct mlfs_extent_header *)bh->b_data;
+}
+
+static inline struct mlfs_extent_header *direct_ext_block_hdr(char *buf)
+{
+	return (struct mlfs_extent_header *)buf;
 }
 
 static inline uint16_t ext_depth(handle_t *handle, struct inode *inode)
