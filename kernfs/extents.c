@@ -157,50 +157,8 @@ retry:
 		goto retry;
 	}
 
-#if 0 // old code of using NAIVE BLOCK ALLOCATOR
-	pthread_mutex_lock(&block_bitmap_mutex);
+	// old code of using NAIVE BLOCK ALLOCATOR - (hbbr: delete)
 
-retry:
-	ret = bitmap_find_next_contiguous_clr(sb->s_blk_bitmap, 
-			sb->last_block_allocated,
-			sb->ondisk->ndatablocks - 1,
-			*count, blockp);
-
-	if (*blockp == 0) {
-		sb->last_block_allocated = 0;
-
-#ifdef KERNFS
-		if (retry_count == 1) {
-			try_migrate_blocks(g_root_dev, g_ssd_dev, 0, 1);
-			goto retry;
-		}
-#endif
-
-		if (retry_count == 2) 
-			panic("File system is full!\n");
-
-		retry_count++;
-		goto retry;
-	}
-
-	if (!ret) 
-		bitmap_bits_set_range(sb->s_blk_bitmap, *blockp, *count);
-
-	sb->last_block_allocated = *blockp + *count - 1;
-
-	if (ret) {
-		// TODO: set the last block allocated to 0 and research.
-		panic("fail to allocate multiple blocks\n");
-	}
-
-	sb->used_blocks += *count;
-
-	if (sb->used_blocks >= sb->ondisk->size)
-		panic("File system is full!\n");
-
-	pthread_mutex_unlock(&block_bitmap_mutex);
-#endif
-	
 	return ret;
 }
 
@@ -214,7 +172,7 @@ static mlfs_fsblk_t mlfs_new_data_blocks(handle_t *handle,
 		struct inode *inode, int goal, unsigned int flags,
 		mlfs_lblk_t *count, int *errp) 
 {
-	struct super_block *sb = get_inode_sb(handle->dev, inode);
+	// struct super_block *sb = get_inode_sb(handle->dev, inode);
 	mlfs_fsblk_t block = 0;
 	mlfs_lblk_t nrblocks = (count) ? (*count) : 1;
 

@@ -698,6 +698,8 @@ int digest_file_iovec(uint8_t from_dev, uint8_t to_dev, int libfs_id,
 	f_blklist_t *_blk_list;
 	handle_t handle = {.libfs = libfs_id, .dev = to_dev};
 
+	panic("(digest_file_iovec) quit...\n");
+
 	mlfs_debug("[FILE] (%d->%d) inum %d offset %lu(0x%lx) length %u\n", 
 			from_dev, to_dev, file_inum, offset, offset, length);
 
