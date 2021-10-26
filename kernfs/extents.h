@@ -8,6 +8,8 @@
 #include "io/device.h"
 #include "mlfs/kerncompat.h"
 
+#include "indexing_api_interface.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -78,7 +80,7 @@ struct mlfs_extent {
  */
 struct mlfs_extent_idx {
 	uint32_t ei_block;   /* index covers logical blocks from 'block' */
-	uint32_t ei_leaf_lo; /* pointer to the physical block of the next level. 
+	uint32_t ei_leaf_lo; /* pointer to the physical block of the next level.
 							leaf or next index could be there */
 	uint16_t ei_leaf_hi; /* high 16 bits of physical block */
 	uint16_t ei_unused;
@@ -190,11 +192,30 @@ struct mlfs_ext_path {
 #define MLFS_MAP_ALLOCATED  (1 << 3)
 #define MLFS_MAP_FOUND		  (1 << 4)
 
+#define MAX_GET_BLOCKS_RETURN 8
+#define MAX_NUM_BLOCKS_LOOKUP 256
+
 struct mlfs_map_blocks {
 	mlfs_fsblk_t m_pblk;
 	mlfs_lblk_t m_lblk;
 	uint32_t m_len;
 	uint32_t m_flags;
+};
+
+struct mlfs_map_blocks_arr {
+	mlfs_fsblk_t m_pblk[MAX_GET_BLOCKS_RETURN];
+	mlfs_lblk_t m_lblk;
+	uint32_t m_len;
+	uint32_t m_flags;
+};
+
+struct mlfs_pblks {
+	mlfs_fsblk_t m_pblk[MAX_NUM_BLOCKS_LOOKUP];
+	uint32_t m_lens[MAX_NUM_BLOCKS_LOOKUP];
+	mlfs_fsblk_t *m_pblk_dyn;
+	uint32_t *m_lens_dyn;
+	uint8_t dyn;
+	uint32_t size;
 };
 
 /*
@@ -253,7 +274,7 @@ static inline mlfs_fsblk_t getpblk(char *addr)
 }
 
 
-static inline struct mlfs_extent_header *ext_inode_hdr(handle_t *handle, 
+static inline struct mlfs_extent_header *ext_inode_hdr(handle_t *handle,
 		struct inode *inode)
 {
 	if (handle->dev == g_root_dev)
@@ -405,23 +426,34 @@ static inline int in_range(mlfs_lblk_t b, uint32_t first, uint16_t len) {
 int mlfs_ext_alloc_blocks(handle_t *handle, struct inode *inode,
 		int goal, unsigned int flags, mlfs_fsblk_t *blockp, mlfs_lblk_t *count);
 
-int mlfs_ext_get_blocks(handle_t *handle, struct inode *inode, 
+int mlfs_ext_get_blocks(handle_t *handle, struct inode *inode,
 			struct mlfs_map_blocks *map, int flags);
+int mlfs_hashfs_get_blocks(handle_t *handle, struct inode *inode, 
+			struct mlfs_map_blocks_arr *map_arr, int flags);
+int mlfs_api_get_blocks(handle_t *handle, struct inode *inode, 
+			struct mlfs_map_blocks_arr *map_arr, int flags);
 
-struct mlfs_ext_path *mlfs_find_extent(handle_t *handle, struct inode *inode, 
+struct mlfs_ext_path *mlfs_find_extent(handle_t *handle, struct inode *inode,
 		mlfs_lblk_t block, struct mlfs_ext_path **orig_path, int flags);
 
 void mlfs_ext_init(struct super_block *sb);
 
 int mlfs_ext_tree_init(handle_t *handle, struct inode *inode);
 
-int mlfs_ext_truncate(handle_t *handle, struct inode *inode, 
+int mlfs_ext_truncate(handle_t *handle, struct inode *inode,
 		mlfs_lblk_t from, mlfs_lblk_t to);
 
 extern pthread_mutex_t block_bitmap_mutex;
 extern pthread_spinlock_t inode_dirty_mutex;
 
 int mlfs_mark_inode_dirty(int id, struct inode *inode);
+
+void mlfs_free_blocks(handle_t *handle, struct inode *inode,
+		void *fake, mlfs_fsblk_t block, int count, int flags);
+
+mlfs_fsblk_t mlfs_new_meta_blocks(handle_t *handle,
+		struct inode *inode, mlfs_fsblk_t goal, unsigned int flags,
+		mlfs_lblk_t *count, int *errp);
 
 #ifdef __cplusplus
 }

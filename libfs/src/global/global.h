@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "defs.h"
+#include <json-c/json.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -121,6 +122,37 @@ void mlfs_setup(void);
 // extern uint	g_max_extent_size_blks; /* filesystem size in blocks, old MAX_EXTENT_SIZE*/
 // extern uint	g_block_reservation_size_blks; /* reservation size in blocks, old BRESRV_SIZE*/
 // extern uint	g_fd_start; /* offset start of fds used by mlfs, old FD_START*/
+
+typedef enum indexing_api_choice {
+    EXTENT_TREES,
+    EXTENT_TREES_TOP_CACHED,
+    GLOBAL_CUCKOO_HASH,
+    GLOBAL_HASH_TABLE,
+    HASHFS,
+    LEVEL_HASH_TABLES,
+    RADIX_TREES,
+    NONE
+} indexing_choice_t;
+
+extern indexing_choice_t g_idx_choice;
+extern bool g_idx_cached;
+extern bool g_idx_has_parallel_lookup;
+
+#define USE_IDXAPI() (g_idx_choice != NONE && g_idx_choice != HASHFS)
+
+#define IDXAPI_IS_PER_FILE() (g_idx_choice == EXTENT_TREES || \
+        g_idx_choice == LEVEL_HASH_TABLES || \
+        g_idx_choice == RADIX_TREES || \
+        g_idx_choice == EXTENT_TREES_TOP_CACHED)
+
+#define IDXAPI_IS_HASHFS() (g_idx_choice == HASHFS)
+#define IDXAPI_IS_GLOBAL() (g_idx_choice == GLOBAL_HASH_TABLE || g_idx_choice == GLOBAL_CUCKOO_HASH)
+
+indexing_choice_t get_indexing_choice(void);
+bool get_indexing_is_cached(void);
+void print_global_idx_stats(bool enable_perf_stats);
+void add_idx_stats_to_json(bool enable_perf_stats, json_object *root);
+bool get_idx_has_parallel_lookup(void);
 
 #ifdef __cplusplus
 }
