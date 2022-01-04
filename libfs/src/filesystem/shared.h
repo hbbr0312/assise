@@ -9,6 +9,8 @@
 #include "ds/khash.h"
 #include "ds/stdatomic.h"
 
+#include "api/file_indexing.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -96,6 +98,8 @@ struct disk_superblock {
 	addr_t bmap_start;		// Block number of first free map block
 	addr_t datablock_start;	// Block number of first data block
 	addr_t log_start;		// Block number of first log block
+	// For hash tables/indexing API: where is the metadata block?
+    addr_t api_metadata_block; // for indexing api
 };
 
 #define L_TYPE_DIR_ADD         1
@@ -427,6 +431,9 @@ struct inode {
 	khash_t(de_cache) *de_cache_hash;
 #endif
 	uint32_t n_de_cache_entry;
+
+    /* for file indexing API */
+    idx_struct_t *ext_idx;
 
 	// kernfs only
 	struct rb_node i_rb_node;      // rb node link for s_dirty_root.

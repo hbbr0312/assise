@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "defs.h"
+#include <json-c/json.h>
 
 #ifdef __cplusplus
 extern "C" {
