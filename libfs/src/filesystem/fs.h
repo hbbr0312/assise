@@ -13,7 +13,6 @@
 #include "filesystem/extents_bh.h"
 #include "ds/uthash.h"
 #include "ds/khash.h"
-#include "cache_stats.h"
 
 //#if MLFS_LEASE
 #include "experimental/leases.h"
@@ -22,22 +21,12 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include <sys/mman.h>
-
-// iangneal: for API init
-extern mem_man_fns_t strata_mem_man;
-extern callback_fns_t strata_callbacks;
-extern idx_spec_t strata_idx_spec;
 
 // libmlfs Disk layout:
 // [ boot block | sb block | inode blocks | free bitmap | data blocks | log blocks ]
 // [ inode block | free bitmap | data blocks | log blocks ] is a block group.
 // If data blocks is full, then file system will allocate a new block group.
 // Block group expension is not implemented yet.
-#ifndef MAX_GET_BLOCKS_RETURN
-#define MAX_GET_BLOCKS_RETURN 8
-#define MAX_NUM_BLOCKS_LOOKUP 256
-#endif
 
 // directory entry cache
 struct dirent_data {
@@ -775,61 +764,6 @@ static inline addr_t get_inode_block(uint8_t dev, uint32_t inum)
 	return (inum / IPB) + disk_sb[dev].inode_start;
 }
 
-static inline void init_api_idx_struct(uint8_t dev, struct inode *inode) {
-    // iangneal: indexing API init.
-    if (IDXAPI_IS_PER_FILE() && inode->itype == T_FILE) {
-        static bool notify = false;
-
-        if (!notify) {
-            printf("Init API extent trees!!!\n");
-            notify = true;
-        }
-
-        paddr_range_t direct_extents = {
-            .pr_start      = get_inode_block(dev, inode->inum),
-            .pr_blk_offset = (sizeof(struct dinode) * (inode->inum % IPB)) + 64,
-            .pr_nbytes     = 64
-        };
-
-        idx_struct_t *tmp = (idx_struct_t*)mlfs_zalloc(sizeof(*inode->ext_idx));
-        int init_err;
-
-        switch(g_idx_choice) {
-            case EXTENT_TREES_TOP_CACHED:
-                g_idx_cached = true;
-            case EXTENT_TREES:
-                init_err = extent_tree_fns.im_init_prealloc(&strata_idx_spec,
-                                                            &direct_extents,
-                                                            tmp);
-                break;
-            case LEVEL_HASH_TABLES:
-                init_err = levelhash_fns.im_init_prealloc(&strata_idx_spec,
-                                                          &direct_extents,
-                                                          tmp);
-                break;
-            case RADIX_TREES:
-                init_err = radixtree_fns.im_init_prealloc(&strata_idx_spec,
-                                                          &direct_extents,
-                                                          tmp);
-                break;
-            default:
-                panic("Invalid choice!!!\n");
-        }
-
-        FN(tmp, im_set_caching, tmp, g_idx_cached);
-
-        if (init_err) {
-            fprintf(stderr, "Error in extent tree API init: %d\n", init_err);
-            panic("Could not initialize API per-inode structure!\n");
-        }
-
-        if (tmp->idx_fns->im_set_stats) {
-            FN(tmp, im_set_stats, tmp, enable_perf_stats);
-        }
-
-        inode->ext_idx = tmp;
-    }
-}
 
 #define LPB           (g_block_size_bytes / sizeof(mlfs_lease_t))
 

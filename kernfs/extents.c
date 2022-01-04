@@ -10,10 +10,6 @@
 #include "migrate.h"
 #endif
 
-#include "cache_stats.h"
-#include "inode_hash.h"
-#include "lpmem_ghash.h"
-
 /*
  * used by extent splitting.
  */
@@ -102,20 +98,20 @@ int mlfs_mark_inode_dirty(int id, struct inode *inode)
 #endif
 #endif
 
-#ifdef REUSE_PREVIOUS_PATH
+#ifdef REUSE_PREVIOUS_PATH 
 	inode->invalidate_path = 1;
 #endif
 
 	return 0;
 }
 
-static inline uint32_t get_block_size(struct inode *inode)
+static inline uint32_t get_block_size(struct inode *inode) 
 {
 	//return g_bdev[inode->dev]->bd_blocksize;
 	return g_block_size_bytes;
 }
 
-static inline int mlfs_handle_dirty_metadata(handle_t *handle,
+static inline int mlfs_handle_dirty_metadata(handle_t *handle, 
 		struct inode *inode, struct buffer_head *bh)
 {
 	set_buffer_dirty(bh);
@@ -125,22 +121,20 @@ static inline int mlfs_handle_dirty_metadata(handle_t *handle,
 int mlfs_ext_alloc_blocks(handle_t *handle, struct inode *inode,
 		int goal, unsigned int flags, mlfs_fsblk_t *blockp, mlfs_lblk_t *count)
 {
-#ifdef KERNFS
 	struct super_block *sb = get_inode_sb(handle->dev, inode);
 	int ret;
 	int retry_count = 0;
-#ifdef BALLOC
 	enum alloc_type a_type;
-
+	
 	if (flags & MLFS_GET_BLOCKS_CREATE_DATA_LOG)
 		a_type = DATA_LOG;
-	else if (flags & MLFS_GET_BLOCKS_CREATE_META) 
+	else if (flags & MLFS_GET_BLOCKS_CREATE_META)
 		a_type = TREE;
-	else
+	else 
 		a_type = DATA;
 
 retry:
-	ret = mlfs_new_blocks(get_inode_sb(handle->dev, inode), blockp,
+	ret = mlfs_new_blocks(get_inode_sb(handle->dev, inode), blockp, 
 			*count, 0, 0, a_type, goal);
 
 	if (ret > 0) {
@@ -169,7 +163,7 @@ retry:
 	return ret;
 }
 
-static inline mlfs_fsblk_t mlfs_inode_to_goal_block(struct inode *inode)
+static inline mlfs_fsblk_t mlfs_inode_to_goal_block(struct inode *inode) 
 {
 	return 0;
 }
@@ -177,7 +171,7 @@ static inline mlfs_fsblk_t mlfs_inode_to_goal_block(struct inode *inode)
 /* used for file data blocks in extent tree */
 static mlfs_fsblk_t mlfs_new_data_blocks(handle_t *handle,
 		struct inode *inode, int goal, unsigned int flags,
-		mlfs_lblk_t *count, int *errp)
+		mlfs_lblk_t *count, int *errp) 
 {
 	// struct super_block *sb = get_inode_sb(handle->dev, inode);
 	mlfs_fsblk_t block = 0;
@@ -195,7 +189,7 @@ static mlfs_fsblk_t mlfs_new_data_blocks(handle_t *handle,
 /* used for internal node blocks in extent tree */
 static mlfs_fsblk_t mlfs_new_meta_blocks(handle_t *handle,
 		struct inode *inode, mlfs_fsblk_t goal, unsigned int flags,
-		mlfs_lblk_t *count, int *errp)
+		mlfs_lblk_t *count, int *errp) 
 {
 	mlfs_fsblk_t block = 0;
 	mlfs_lblk_t nrblocks = (count) ? (*count) : 1;
@@ -212,24 +206,21 @@ static mlfs_fsblk_t mlfs_new_meta_blocks(handle_t *handle,
 }
 
 static void mlfs_free_blocks(handle_t *handle, struct inode *inode,
-		void *fake, mlfs_fsblk_t block, int count, int flags)
+		void *fake, mlfs_fsblk_t block, int count, int flags) 
 {
-#ifdef KERNFS
 	int ret;
 	struct super_block *sb = get_inode_sb(handle->dev, inode);
 	UNUSED(flags);
-  	UNUSED(fake);
 
-#ifdef BALLOC
-	ret = mlfs_free_blocks_node(get_inode_sb(handle->dev, inode),
+	ret = mlfs_free_blocks_node(get_inode_sb(handle->dev, inode), 
 			block, count, 0, 0);
 	mlfs_assert(ret == 0);
-#endif
+
 	pthread_mutex_lock(&block_bitmap_mutex);    // Concurrent support.
 	bitmap_bits_free(sb->s_blk_bitmap, block, count);
 	pthread_mutex_unlock(&block_bitmap_mutex);  // Concurrent support.
 
-	mlfs_debug("inode %u free blocks %lu - %lu \n",
+	mlfs_debug("inode %u free blocks %lu - %lu \n", 
 			inode->inum, block, block + count - 1);
 
 	mlfs_debug("[dev %u] used blocks %d\n", g_root_dev,
@@ -241,7 +232,7 @@ static void mlfs_free_blocks(handle_t *handle, struct inode *inode,
 	sb->used_blocks -= count;
 
 	// FIXME: This code has a problem that makes unlink digest very slow
-	// especially in Varmail workload.
+	// especially in Varmail workload. 
 #if 0
 	/* remove previously issued block io from writeback list.
 	 * Tree internal nodes (meta blocks) are registered to a dirty writeback list,
@@ -264,9 +255,6 @@ static void mlfs_free_blocks(handle_t *handle, struct inode *inode,
 #endif
 
 	return;
-#else //LIBFS
-	return;
-#endif
 }
 
 /*
@@ -275,7 +263,7 @@ static void mlfs_free_blocks(handle_t *handle, struct inode *inode,
 
 #define EXT_MAX_BLOCKS 0xffffffff
 
-static inline int mlfs_ext_space_block(struct inode *inode, int check)
+static inline int mlfs_ext_space_block(struct inode *inode, int check) 
 {
 	int size;
 
@@ -287,7 +275,7 @@ static inline int mlfs_ext_space_block(struct inode *inode, int check)
 	return size;
 }
 
-static inline int mlfs_ext_space_block_idx(struct inode *inode, int check)
+static inline int mlfs_ext_space_block_idx(struct inode *inode, int check) 
 {
 	int size;
 
@@ -299,7 +287,7 @@ static inline int mlfs_ext_space_block_idx(struct inode *inode, int check)
 	return size;
 }
 
-static inline int mlfs_ext_space_root(struct inode *inode, int check)
+static inline int mlfs_ext_space_root(struct inode *inode, int check) 
 {
 	int size;
 
@@ -347,7 +335,7 @@ static int mlfs_ext_max_entries(handle_t *handle, struct inode *inode, int depth
 static int mlfs_ext_check(struct inode *inode, struct mlfs_extent_header *eh,
 		int depth, mlfs_fsblk_t pblk);
 
-int mlfs_ext_tree_init(handle_t *handle, struct inode *inode)
+int mlfs_ext_tree_init(handle_t *handle, struct inode *inode) 
 {
 	struct mlfs_extent_header *eh;
 
@@ -374,13 +362,13 @@ void mlfs_ext_init(struct super_block *sb) {
  * Get a buffer_head by fs_bread, and read fresh data from the storage.
  */
 static struct buffer_head *read_extent_tree_block(handle_t *handle,
-		struct inode *inode, mlfs_fsblk_t pblk, int depth, int flags)
+		struct inode *inode, mlfs_fsblk_t pblk, int depth, int flags) 
 {
 	struct buffer_head *bh;
 	int err;
 
 	bh = fs_bread(handle->dev, pblk, &err);
-	if (!bh)
+	if (!bh) 
 		return (struct buffer_head *)ERR_PTR(-ENOMEM);
 
 	if (!buffer_uptodate(bh)) {
@@ -388,11 +376,11 @@ static struct buffer_head *read_extent_tree_block(handle_t *handle,
 		goto errout;
 	}
 
-	if (buffer_verified(bh))
+	if (buffer_verified(bh)) 
 		return bh;
 
 	err = mlfs_ext_check(inode, ext_block_hdr(bh), depth, pblk);
-	if (err)
+	if (err) 
 		goto errout;
 
 	set_buffer_verified(bh);
@@ -417,21 +405,21 @@ static char *direct_read_extent_tree_block(handle_t *handle,
 	return buf;
 }
 
-int mlfs_ext_check_inode(handle_t *handle, struct inode *inode)
+int mlfs_ext_check_inode(handle_t *handle, struct inode *inode) 
 {
-	return mlfs_ext_check(inode, ext_inode_hdr(handle, inode),
+	return mlfs_ext_check(inode, ext_inode_hdr(handle, inode), 
 			ext_depth(handle, inode), 0);
 }
 
 static uint32_t mlfs_ext_block_csum(struct inode *inode,
-		struct mlfs_extent_header *eh)
+		struct mlfs_extent_header *eh) 
 {
 	/*return mlfs_crc32c(inode->i_csum, eh, MLFS_EXTENT_TAIL_OFFSET(eh));*/
 	return ET_CHECKSUM_MAGIC;
 }
 
 static void mlfs_extent_block_csum_set(struct inode *inode,
-		struct mlfs_extent_header *eh)
+		struct mlfs_extent_header *eh) 
 {
 	struct mlfs_extent_tail *tail;
 
@@ -447,7 +435,7 @@ static int mlfs_split_extent_at(handle_t *handle,
 static inline int mlfs_force_split_extent_at(handle_t *handle,
 		struct inode *inode,
 		struct mlfs_ext_path **ppath,
-		mlfs_lblk_t lblk, int nofail)
+		mlfs_lblk_t lblk, int nofail) 
 {
 	struct mlfs_ext_path *path = *ppath;
 	int unwritten = mlfs_ext_is_unwritten(path[path->p_depth].p_ext);
@@ -459,7 +447,7 @@ static inline int mlfs_force_split_extent_at(handle_t *handle,
 }
 
 static mlfs_fsblk_t mlfs_ext_find_goal(struct inode *inode,
-		struct mlfs_ext_path *path, mlfs_lblk_t block)
+		struct mlfs_ext_path *path, mlfs_lblk_t block) 
 {
 	if (path) {
 		int depth = path->p_depth;
@@ -495,7 +483,7 @@ static mlfs_fsblk_t mlfs_ext_find_goal(struct inode *inode,
 
 		/* it looks like index is empty;
 		 * try to find starting block from index itself */
-		if (path[depth].p_bh)
+		if (path[depth].p_bh) 
 			return path[depth].p_bh->b_blocknr;
 		if (path[depth].p_buf)
 			return getpblk(path[depth].p_buf);
@@ -512,10 +500,10 @@ static mlfs_fsblk_t mlfs_ext_new_meta_block(handle_t *handle,
 		struct inode *inode,
 		struct mlfs_ext_path *path,
 		struct mlfs_extent *ex, int *err,
-		unsigned int flags)
+		unsigned int flags) 
 {
 	mlfs_fsblk_t goal, newblock;
-	mlfs_lblk_t count = 1;
+	mlfs_lblk_t count = 1;	
 
 	//goal = mlfs_ext_find_goal(inode, path, le32_to_cpu(ex->ee_block));
 	mlfs_debug("meta: start offset %u, len %u\n", ex->ee_block, ex->ee_len);
@@ -527,7 +515,7 @@ static mlfs_fsblk_t mlfs_ext_new_meta_block(handle_t *handle,
 
 int __mlfs_ext_dirty(const char *where, unsigned int line,
 		handle_t *handle, struct inode *inode,
-		struct mlfs_ext_path *path)
+		struct mlfs_ext_path *path) 
 {
 	int err = 0;
 
@@ -542,17 +530,17 @@ int __mlfs_ext_dirty(const char *where, unsigned int line,
 		err = mlfs_mark_inode_dirty(handle->libfs, inode);
 	}
 
-#ifdef REUSE_PREVIOUS_PATH
+#ifdef REUSE_PREVIOUS_PATH 
 	inode->invalidate_path = 1;
 #endif
 	return err;
 }
 
-void mlfs_ext_drop_refs(struct mlfs_ext_path *path)
+void mlfs_ext_drop_refs(struct mlfs_ext_path *path) 
 {
 	int depth, i;
 
-	if (!path)
+	if (!path) 
 		return;
 
 	depth = path->p_depth;
@@ -570,7 +558,7 @@ void mlfs_ext_drop_refs(struct mlfs_ext_path *path)
  * is correct or not.
  */
 static int mlfs_ext_check(struct inode *inode, struct mlfs_extent_header *eh,
-		int depth, mlfs_fsblk_t pblk)
+		int depth, mlfs_fsblk_t pblk) 
 {
 	struct mlfs_extent_tail *tail;
 	const char *error_msg;
@@ -615,7 +603,7 @@ corrupted:
  * the header must be checked before calling this
  */
 static void mlfs_ext_binsearch_idx(struct inode *inode,
-		struct mlfs_ext_path *path, mlfs_lblk_t block)
+		struct mlfs_ext_path *path, mlfs_lblk_t block) 
 {
 	struct mlfs_extent_header *eh = path->p_hdr;
 	struct mlfs_extent_idx *r, *l, *m;
@@ -638,7 +626,7 @@ static void mlfs_ext_binsearch_idx(struct inode *inode,
 	}
 
 	path->p_idx = l - 1;
-
+	
 	/*
 	mlfs_lsm_debug("  -> %u->%lx\n", mlfs_idx_lblock(path->p_idx),
 			mlfs_idx_pblock(path->p_idx));
@@ -660,7 +648,7 @@ static void mlfs_ext_binsearch_idx(struct inode *inode,
 						(ix[-1].ei_block));
 			}
 			BUG_ON(k && (ix->ei_block) <= (ix[-1].ei_block));
-			if (block < (ix->ei_block))
+			if (block < (ix->ei_block)) 
 				break;
 			chix = ix;
 		}
@@ -676,7 +664,7 @@ static void mlfs_ext_binsearch_idx(struct inode *inode,
  * When returning, it sets proper extents to path->p_ext.
  */
 static void mlfs_ext_binsearch(struct inode *inode, struct mlfs_ext_path *path,
-		mlfs_lblk_t block)
+		mlfs_lblk_t block) 
 {
 	struct mlfs_extent_header *eh = path->p_hdr;
 	struct mlfs_extent *r, *l, *m;
@@ -725,7 +713,8 @@ static void mlfs_ext_binsearch(struct inode *inode, struct mlfs_ext_path *path,
 #endif
 }
 
-static void mlfs_ext_show_path(struct inode *inode, struct mlfs_ext_path *path)
+#if 1 
+static void mlfs_ext_show_path(struct inode *inode, struct mlfs_ext_path *path) 
 {
 	int k, l = path->p_depth;
 
@@ -747,17 +736,15 @@ static void mlfs_ext_show_path(struct inode *inode, struct mlfs_ext_path *path)
 	}
 }
 
-//#ifdef mlfs_lsm_debug
-#if 1
 static void mlfs_ext_show_leaf(handle_t *handle, struct inode *inode,
-		struct mlfs_ext_path *path)
+		struct mlfs_ext_path *path) 
 {
 	int depth = ext_depth(handle, inode);
 	struct mlfs_extent_header *eh;
 	struct mlfs_extent *ex;
 	int i;
 
-	if (!path)
+	if (!path) 
 		return;
 
 	eh = path[depth].p_hdr;
@@ -766,16 +753,16 @@ static void mlfs_ext_show_leaf(handle_t *handle, struct inode *inode,
 	mlfs_lsm_debug("--------- leaf (inum %u)\n", inode->inum);
 
 	for (i = 0; i < le16_to_cpu(eh->eh_entries); i++, ex++) {
-		mlfs_lsm_debug("lb %u:[%d] ~ %u @ %lx\n",
+		mlfs_lsm_debug("lb %u:[%d] ~ %u @ %lx\n", 
 				le32_to_cpu(ex->ee_block),
-				mlfs_ext_is_unwritten(ex),
+				mlfs_ext_is_unwritten(ex), 
 				(mlfs_ext_get_actual_len(ex) - 1) << 12,
 				mlfs_ext_pblock(ex));
 	}
 }
 
-static void mlfs_ext_show_move(handle_t *handle, struct inode *inode,
-		struct mlfs_ext_path *path, mlfs_fsblk_t newblock, int level)
+static void mlfs_ext_show_move(handle_t *handle, struct inode *inode, 
+		struct mlfs_ext_path *path, mlfs_fsblk_t newblock, int level) 
 {
 	int depth = ext_depth(handle, inode);
 	struct mlfs_extent *ex;
@@ -853,7 +840,7 @@ void mlfs_ext_dump(uint8_t dev, uint32_t inum)
  */
 struct mlfs_ext_path *mlfs_find_extent(handle_t *handle,
 		struct inode *inode, mlfs_lblk_t block,
-		struct mlfs_ext_path **orig_path, int flags)
+		struct mlfs_ext_path **orig_path, int flags) 
 {
 	struct mlfs_extent_header *eh;
 	struct buffer_head *bh;
@@ -877,7 +864,7 @@ struct mlfs_ext_path *mlfs_find_extent(handle_t *handle,
 		/* account possible depth increase */
 		path = (struct mlfs_ext_path *)mlfs_zalloc(
 				sizeof(struct mlfs_ext_path) * (depth + 2));
-		if (unlikely(!path))
+		if (unlikely(!path)) 
 			return (struct mlfs_ext_path *)ERR_PTR(-ENOMEM);
 		path[0].p_maxdepth = depth + 1;
 	}
@@ -952,7 +939,7 @@ err:
 	mlfs_ext_drop_refs(path);
 	if (path) {
 		mlfs_free(path);
-		if (orig_path)
+		if (orig_path) 
 			*orig_path = NULL;
 	}
 	return (struct mlfs_ext_path *)ERR_PTR(ret);
@@ -963,8 +950,8 @@ err:
  * insert new index [@logical;@ptr] into the block at @curp;
  * check where to insert: before @curp or after @curp
  */
-static int mlfs_ext_insert_index(handle_t *handle, struct inode *inode,
-		struct mlfs_ext_path *curp, int logical, mlfs_fsblk_t ptr)
+static int mlfs_ext_insert_index(handle_t *handle, struct inode *inode, 
+		struct mlfs_ext_path *curp, int logical, mlfs_fsblk_t ptr) 
 {
 	struct mlfs_extent_idx *ix;
 	int len, err;
@@ -1035,7 +1022,7 @@ static int mlfs_ext_insert_index(handle_t *handle, struct inode *inode,
  */
 static int mlfs_ext_split(handle_t *handle, struct inode *inode,
 		unsigned int flags, struct mlfs_ext_path *path,
-		struct mlfs_extent *newext, int at)
+		struct mlfs_extent *newext, int at) 
 {
 	struct buffer_head *bh = NULL;
 	char *buf = NULL;
@@ -1084,7 +1071,7 @@ static int mlfs_ext_split(handle_t *handle, struct inode *inode,
 	 * upon them.
 	 */
 	ablocks = (mlfs_fsblk_t *)mlfs_zalloc(sizeof(mlfs_fsblk_t) * depth);
-	if (!ablocks)
+	if (!ablocks) 
 		return -ENOMEM;
 
 	/* allocate all needed blocks */
@@ -1092,7 +1079,7 @@ static int mlfs_ext_split(handle_t *handle, struct inode *inode,
 	for (a = 0; a < depth - at; a++) {
 		newblock = mlfs_ext_new_meta_block(handle, inode, path, newext,
 				&err, flags);
-		if (newblock == 0)
+		if (newblock == 0) 
 			goto cleanup;
 		ablocks[a] = newblock;
 	}
@@ -1117,10 +1104,10 @@ static int mlfs_ext_split(handle_t *handle, struct inode *inode,
 
 	//TODO: call sync dirty buffer
 	//bh = mlfs_write(inode->i_sb, newblock);
-
+	
 	/*
 	err = mlfs_journal_get_create_access(handle, bh);
-	if (err)
+	if (err) 
 		goto cleanup;
 	*/
 
@@ -1157,7 +1144,7 @@ static int mlfs_ext_split(handle_t *handle, struct inode *inode,
 	set_buffer_uptodate(bh);
 
 	err = mlfs_handle_dirty_metadata(handle, inode, bh);
-	if (err)
+	if (err) 
 		goto cleanup;
 
 	fs_brelse(bh);
@@ -1168,7 +1155,7 @@ static int mlfs_ext_split(handle_t *handle, struct inode *inode,
 	if (m) {
 		le16_add_cpu(&path[depth].p_hdr->eh_entries, -m);
 		err = mlfs_ext_dirty(handle, inode, path + depth);
-		if (err)
+		if (err) 
 			goto cleanup;
 	}
 
@@ -1180,7 +1167,7 @@ static int mlfs_ext_split(handle_t *handle, struct inode *inode,
 		goto cleanup;
 	}
 
-	if (k)
+	if (k) 
 		mlfs_lsm_debug("create %d intermediate indices\n", k);
 
 	/* insert new index into current index block */
@@ -1243,7 +1230,7 @@ static int mlfs_ext_split(handle_t *handle, struct inode *inode,
 		set_buffer_uptodate(bh);
 
 		err = mlfs_handle_dirty_metadata(handle, inode, bh);
-		if (err)
+		if (err) 
 			goto cleanup;
 		fs_brelse(bh);
 		bh = NULL;
@@ -1253,7 +1240,7 @@ static int mlfs_ext_split(handle_t *handle, struct inode *inode,
 		if (m) {
 			le16_add_cpu(&path[i].p_hdr->eh_entries, -m);
 			err = mlfs_ext_dirty(handle, inode, path + i);
-			if (err)
+			if (err) 
 				goto cleanup;
 		}
 
@@ -1265,7 +1252,7 @@ static int mlfs_ext_split(handle_t *handle, struct inode *inode,
 			le32_to_cpu(border), newblock);
 
 cleanup:
-	if (bh)
+	if (bh) 
 		fs_brelse(bh);
 
 	if (err) {
@@ -1291,7 +1278,7 @@ cleanup:
  *   just created block
  */
 static int mlfs_ext_grow_indepth(handle_t *handle,
-		struct inode *inode, unsigned int flags)
+		struct inode *inode, unsigned int flags) 
 {
 	struct mlfs_extent_header *neh;
 	struct buffer_head *bh;
@@ -1306,7 +1293,7 @@ static int mlfs_ext_grow_indepth(handle_t *handle,
 	goal = mlfs_inode_to_goal_block(inode);
 
 	newblock = mlfs_new_meta_blocks(handle, inode, goal, flags, &count, &err);
-	if (newblock == 0)
+	if (newblock == 0) 
 		return err;
 
 #ifdef EXTENT_NO_CACHE
@@ -1318,13 +1305,13 @@ static int mlfs_ext_grow_indepth(handle_t *handle,
 #else
 	bh = fs_get_bh(handle->dev, newblock, &ret);
 	//bh = extents_bwrite(inode->i_sb, newblock);
-	if (!bh)
+	if (!bh) 
 		return -ENOMEM;
 	lock_buffer(bh);
 
 	/*
 	err = mlfs_journal_get_create_access(handle, bh);
-	if (err)
+	if (err) 
 		goto out;
 	*/
 
@@ -1352,7 +1339,7 @@ static int mlfs_ext_grow_indepth(handle_t *handle,
 	unlock_buffer(bh);
 
 	err = mlfs_handle_dirty_metadata(handle, inode, bh);
-	if (err)
+	if (err) 
 		goto out;
 #endif
 	/* Update top-level index: num,max,pointer */
@@ -1362,7 +1349,7 @@ static int mlfs_ext_grow_indepth(handle_t *handle,
 	if (neh->eh_depth == 0) {
 		/* Root extent block becomes index block */
 		neh->eh_max = cpu_to_le16(mlfs_ext_space_root_idx(inode, 0));
-		EXT_FIRST_INDEX(neh)->ei_block =
+		EXT_FIRST_INDEX(neh)->ei_block = 
 			EXT_FIRST_EXTENT(neh)->ee_block;
 	}
 	mlfs_lsm_debug("new root: num %d(%d), lblock %d, ptr %lx\n",
@@ -1385,8 +1372,8 @@ out:
  */
 static int mlfs_ext_create_new_leaf(handle_t *handle,
 		struct inode *inode, unsigned int mb_flags, unsigned int gb_flags,
-		struct mlfs_ext_path **ppath, struct mlfs_extent *newext)
-{
+		struct mlfs_ext_path **ppath, struct mlfs_extent *newext) 
+{ 
 	struct mlfs_ext_path *path = *ppath;
 	struct mlfs_ext_path *curp;
 	int depth, i, err = 0;
@@ -1407,23 +1394,23 @@ repeat:
 		/* if we found index with free entry, then use that
 		 * entry: create all needed subtree and add new leaf */
 		err = mlfs_ext_split(handle, inode, mb_flags, path, newext, i);
-		if (err)
+		if (err) 
 			goto out;
 
 		/* refill path */
-		path = mlfs_find_extent(handle, inode, mlfs_ext_lblock(newext),
+		path = mlfs_find_extent(handle, inode, mlfs_ext_lblock(newext), 
 				ppath, gb_flags);
 
-		if (IS_ERR(path))
+		if (IS_ERR(path)) 
 			err = PTR_ERR(path);
 	} else {
 		/* tree is full, time to grow in depth */
 		err = mlfs_ext_grow_indepth(handle, inode, mb_flags);
-		if (err)
+		if (err) 
 			goto out;
 
 		/* refill path */
-		path = mlfs_find_extent(handle, inode, mlfs_ext_lblock(newext),
+		path = mlfs_find_extent(handle, inode, mlfs_ext_lblock(newext), 
 				ppath, gb_flags);
 		if (IS_ERR(path)) {
 			err = PTR_ERR(path);
@@ -1453,7 +1440,7 @@ out:
  * return value contains 0 (success) or error code
  */
 static int mlfs_ext_search_left(struct inode *inode, struct mlfs_ext_path *path,
-		mlfs_lblk_t *logical, mlfs_fsblk_t *phys)
+		mlfs_lblk_t *logical, mlfs_fsblk_t *phys) 
 {
 	struct mlfs_extent_idx *ix;
 	struct mlfs_extent *ex;
@@ -1466,7 +1453,7 @@ static int mlfs_ext_search_left(struct inode *inode, struct mlfs_ext_path *path,
 	depth = path->p_depth;
 	*phys = 0;
 
-	if (depth == 0 && path->p_ext == NULL)
+	if (depth == 0 && path->p_ext == NULL) 
 		return 0;
 
 	/* usually extent in the path covers blocks smaller
@@ -1517,9 +1504,9 @@ static int mlfs_ext_search_left(struct inode *inode, struct mlfs_ext_path *path,
  * returns 0 at @phys
  * return value contains 0 (success) or error code
  */
-static int mlfs_ext_search_right(handle_t *handle, struct inode *inode,
-		struct mlfs_ext_path *path, mlfs_lblk_t *logical, mlfs_fsblk_t *phys,
-		struct mlfs_extent **ret_ex)
+static int mlfs_ext_search_right(handle_t *handle, struct inode *inode, 
+		struct mlfs_ext_path *path, mlfs_lblk_t *logical, mlfs_fsblk_t *phys, 
+		struct mlfs_extent **ret_ex) 
 {
 	char *buf = NULL;
 	struct buffer_head *bh = NULL;
@@ -1537,7 +1524,7 @@ static int mlfs_ext_search_right(handle_t *handle, struct inode *inode,
 	depth = path->p_depth;
 	*phys = 0;
 
-	if (depth == 0 && path->p_ext == NULL)
+	if (depth == 0 && path->p_ext == NULL) 
 		return 0;
 
 	/* usually extent in the path covers blocks smaller
@@ -1581,7 +1568,7 @@ static int mlfs_ext_search_right(handle_t *handle, struct inode *inode,
 	/* go up and search for index to the right */
 	while (--depth >= 0) {
 		ix = path[depth].p_idx;
-		if (ix != EXT_LAST_INDEX(path[depth].p_hdr))
+		if (ix != EXT_LAST_INDEX(path[depth].p_hdr)) 
 			goto got_index;
 	}
 
@@ -1605,7 +1592,7 @@ got_index:
 		bh = NULL;
 #else
 		bh = read_extent_tree_block(handle, inode, block, path->p_depth - depth, 0);
-		if (IS_ERR(bh))
+		if (IS_ERR(bh)) 
 			return PTR_ERR(bh);
 
 		eh = ext_block_hdr(bh);
@@ -1625,7 +1612,7 @@ got_index:
 	bh = NULL;
 #else
 	bh = read_extent_tree_block(handle, inode, block, path->p_depth - depth, 0);
-	if (IS_ERR(bh))
+	if (IS_ERR(bh)) 
 		return PTR_ERR(bh);
 
 	eh = ext_block_hdr(bh);
@@ -1637,7 +1624,7 @@ found_extent:
 	*phys = mlfs_ext_pblock(ex);
 	*ret_ex = ex;
 
-	if (bh)
+	if (bh) 
 		fs_brelse(bh);
 
 	return 0;
@@ -1650,13 +1637,13 @@ found_extent:
  * allocated block. Thus, index entries have to be consistent
  * with leaves.
  */
-mlfs_lblk_t mlfs_ext_next_allocated_block(struct mlfs_ext_path *path)
+mlfs_lblk_t mlfs_ext_next_allocated_block(struct mlfs_ext_path *path) 
 {
 	int depth;
 
 	depth = path->p_depth;
 
-	if (depth == 0 && path->p_ext == NULL)
+	if (depth == 0 && path->p_ext == NULL) 
 		return EXT_MAX_BLOCKS;
 
 	while (depth >= 0) {
@@ -1682,7 +1669,7 @@ mlfs_lblk_t mlfs_ext_next_allocated_block(struct mlfs_ext_path *path)
  * mlfs_ext_next_leaf_block:
  * returns first allocated block from next leaf or EXT_MAX_BLOCKS
  */
-static mlfs_lblk_t mlfs_ext_next_leaf_block(struct mlfs_ext_path *path)
+static mlfs_lblk_t mlfs_ext_next_leaf_block(struct mlfs_ext_path *path) 
 {
 	int depth;
 
@@ -1690,7 +1677,7 @@ static mlfs_lblk_t mlfs_ext_next_leaf_block(struct mlfs_ext_path *path)
 	depth = path->p_depth;
 
 	/* zero-tree has no leaf blocks at all */
-	if (depth == 0)
+	if (depth == 0) 
 		return EXT_MAX_BLOCKS;
 
 	/* go to upper internal node (index block) */
@@ -1714,7 +1701,7 @@ static mlfs_lblk_t mlfs_ext_next_leaf_block(struct mlfs_ext_path *path)
  * TODO: do we need to correct tree in all cases?
  */
 static int mlfs_ext_correct_indexes(handle_t *handle,
-		struct inode *inode, struct mlfs_ext_path *path)
+		struct inode *inode, struct mlfs_ext_path *path) 
 {
 	struct mlfs_extent_header *eh;
 	int depth = ext_depth(handle, inode);
@@ -1749,12 +1736,12 @@ static int mlfs_ext_correct_indexes(handle_t *handle,
 	path[k].p_idx->ei_block = border;
 	err = mlfs_ext_dirty(handle, inode, path + k);
 
-	if (err)
+	if (err) 
 		return err;
 
 	while (k--) {
 		/* change all left-side indexes */
-		if (path[k + 1].p_idx != EXT_FIRST_INDEX(path[k + 1].p_hdr))
+		if (path[k + 1].p_idx != EXT_FIRST_INDEX(path[k + 1].p_hdr)) 
 			break;
 
 		path[k].p_idx->ei_block = border;
@@ -1766,7 +1753,7 @@ static int mlfs_ext_correct_indexes(handle_t *handle,
 }
 
 int mlfs_can_extents_be_merged(struct inode *inode, struct mlfs_extent *ex1,
-		struct mlfs_extent *ex2)
+		struct mlfs_extent *ex2) 
 {
 	unsigned short ext1_ee_len, ext2_ee_len;
 
@@ -1776,7 +1763,7 @@ int mlfs_can_extents_be_merged(struct inode *inode, struct mlfs_extent *ex1,
 	 * the extent that was written properly split out and conversion to
 	 * initialized is trivial.
 	 */
-	if (mlfs_ext_is_unwritten(ex1) != mlfs_ext_is_unwritten(ex2))
+	if (mlfs_ext_is_unwritten(ex1) != mlfs_ext_is_unwritten(ex2)) 
 		return 0;
 
 	ext1_ee_len = mlfs_ext_get_actual_len(ex1);
@@ -1791,7 +1778,7 @@ int mlfs_can_extents_be_merged(struct inode *inode, struct mlfs_extent *ex1,
 	 * as an RO_COMPAT feature, refuse to merge to extents if
 	 * this can result in the top bit of ee_len being set.
 	 */
-	if (ext1_ee_len + ext2_ee_len > EXT_INIT_MAX_LEN)
+	if (ext1_ee_len + ext2_ee_len > EXT_INIT_MAX_LEN) 
 		return 0;
 
 	if (mlfs_ext_is_unwritten(ex1) &&
@@ -1803,7 +1790,7 @@ int mlfs_can_extents_be_merged(struct inode *inode, struct mlfs_extent *ex1,
 #endif
 
 	/* Physical block is contiguous */
-	if (mlfs_ext_pblock(ex1) + ext1_ee_len == mlfs_ext_pblock(ex2))
+	if (mlfs_ext_pblock(ex1) + ext1_ee_len == mlfs_ext_pblock(ex2)) 
 		return 1;
 
 	return 0;
@@ -1817,7 +1804,7 @@ int mlfs_can_extents_be_merged(struct inode *inode, struct mlfs_extent *ex1,
  * 1 if they got merged.
  */
 static int mlfs_ext_try_to_merge_right(handle_t *handle, struct inode *inode,
-		struct mlfs_ext_path *path, struct mlfs_extent *ex)
+		struct mlfs_ext_path *path, struct mlfs_extent *ex) 
 {
 	struct mlfs_extent_header *eh;
 	unsigned int depth, len;
@@ -1828,7 +1815,7 @@ static int mlfs_ext_try_to_merge_right(handle_t *handle, struct inode *inode,
 	eh = path[depth].p_hdr;
 
 	while (ex < EXT_LAST_EXTENT(eh)) {
-		if (!mlfs_can_extents_be_merged(inode, ex, ex + 1))
+		if (!mlfs_can_extents_be_merged(inode, ex, ex + 1)) 
 			break;
 
 		/* merge with next extent! */
@@ -1836,7 +1823,7 @@ static int mlfs_ext_try_to_merge_right(handle_t *handle, struct inode *inode,
 		ex->ee_len = cpu_to_le16(mlfs_ext_get_actual_len(ex) +
 				mlfs_ext_get_actual_len(ex + 1));
 
-		if (unwritten)
+		if (unwritten) 
 			mlfs_ext_mark_unwritten(ex);
 
 		if (ex + 1 < EXT_LAST_EXTENT(eh)) {
@@ -1847,7 +1834,7 @@ static int mlfs_ext_try_to_merge_right(handle_t *handle, struct inode *inode,
 		le16_add_cpu(&eh->eh_entries, -1);
 		merge_done = 1;
 
-		if (!eh->eh_entries)
+		if (!eh->eh_entries) 
 			MLFS_ERROR_INODE(inode, "%s\n", "eh->eh_entries = 0!");
 	}
 
@@ -1859,7 +1846,7 @@ static int mlfs_ext_try_to_merge_right(handle_t *handle, struct inode *inode,
  * an extent tree with a single extent tree leaf block into the inode.
  */
 static void mlfs_ext_try_to_merge_up(handle_t *handle,
-		struct inode *inode, struct mlfs_ext_path *path)
+		struct inode *inode, struct mlfs_ext_path *path) 
 {
 	size_t s;
 	unsigned max_root = mlfs_ext_space_root(inode, 0);
@@ -1876,7 +1863,7 @@ static void mlfs_ext_try_to_merge_up(handle_t *handle,
 	 * can't get the journal credits, give up.
 	 */
 	/*
-	if (mlfs_journal_extend(handle, 2))
+	if (mlfs_journal_extend(handle, 2)) 
 		return;
 	*/
 	/*
@@ -1903,7 +1890,7 @@ static void mlfs_ext_try_to_merge_up(handle_t *handle,
  * return 1 if merge left else 0.
  */
 static void mlfs_ext_try_to_merge(handle_t *handle,
-		struct inode *inode, struct mlfs_ext_path *path, struct mlfs_extent *ex)
+		struct inode *inode, struct mlfs_ext_path *path, struct mlfs_extent *ex) 
 {
 	struct mlfs_extent_header *eh;
 	unsigned int depth;
@@ -1916,7 +1903,7 @@ static void mlfs_ext_try_to_merge(handle_t *handle,
 	if (ex > EXT_FIRST_EXTENT(eh))
 		merge_done = mlfs_ext_try_to_merge_right(handle, inode, path, ex - 1);
 
-	if (!merge_done)
+	if (!merge_done) 
 		(void)mlfs_ext_try_to_merge_right(handle, inode, path, ex);
 
 	mlfs_ext_try_to_merge_up(handle, inode, path);
@@ -1929,7 +1916,7 @@ static void mlfs_ext_try_to_merge(handle_t *handle,
  * creating new leaf in the no-space case.
  */
 int mlfs_ext_insert_extent(handle_t *handle, struct inode *inode,
-		struct mlfs_ext_path **ppath, struct mlfs_extent *newext, int gb_flags)
+		struct mlfs_ext_path **ppath, struct mlfs_extent *newext, int gb_flags) 
 {
 	struct mlfs_ext_path *path = *ppath;
 	struct mlfs_extent_header *eh;
@@ -1941,7 +1928,7 @@ int mlfs_ext_insert_extent(handle_t *handle, struct inode *inode,
 	int mb_flags = 0, unwritten;
 
 	if (unlikely(mlfs_ext_get_actual_len(newext) == 0)) {
-		MLFS_ERROR_INODE(inode, "%s\n",
+		MLFS_ERROR_INODE(inode, "%s\n", 
 				"mlfs_ext_get_actual_len(newext) == 0");
 		return -EIO;
 	}
@@ -1978,20 +1965,20 @@ int mlfs_ext_insert_extent(handle_t *handle, struct inode *inode,
 		if (mlfs_can_extents_be_merged(inode, ex, newext)) {
 			mlfs_lsm_debug(
 					"append [%d]%d block to %u:[%d] ~ %u (from %lx)\n",
-					mlfs_ext_is_unwritten(newext),
+					mlfs_ext_is_unwritten(newext), 
 					mlfs_ext_get_actual_len(newext),
-					le32_to_cpu(ex->ee_block),
+					le32_to_cpu(ex->ee_block), 
 					mlfs_ext_is_unwritten(ex),
-					mlfs_ext_get_actual_len(ex),
+					mlfs_ext_get_actual_len(ex), 
 					mlfs_ext_pblock(ex));
 
 			unwritten = mlfs_ext_is_unwritten(ex);
 			ex->ee_len = cpu_to_le16(mlfs_ext_get_actual_len(ex) +
 					mlfs_ext_get_actual_len(newext));
 
-			if (unwritten)
+			if (unwritten) 
 				mlfs_ext_mark_unwritten(ex);
-
+			
 			eh = path[depth].p_hdr;
 			nearex = ex;
 
@@ -2003,11 +1990,11 @@ prepend:
 		if (mlfs_can_extents_be_merged(inode, newext, ex)) {
 			mlfs_lsm_debug(
 					"prepend %u[%d]%d block to %u:[%d] ~ %u from %lx)\n",
-					le32_to_cpu(newext->ee_block),
+					le32_to_cpu(newext->ee_block), 
 					mlfs_ext_is_unwritten(newext),
-					mlfs_ext_get_actual_len(newext),
+					mlfs_ext_get_actual_len(newext), 
 					le32_to_cpu(ex->ee_block),
-					mlfs_ext_is_unwritten(ex),
+					mlfs_ext_is_unwritten(ex), 
 					mlfs_ext_get_actual_len(ex),
 					mlfs_ext_pblock(ex));
 
@@ -2018,7 +2005,7 @@ prepend:
 			ex->ee_len = cpu_to_le16(mlfs_ext_get_actual_len(ex) +
 					mlfs_ext_get_actual_len(newext));
 
-			if (unwritten)
+			if (unwritten) 
 				mlfs_ext_mark_unwritten(ex);
 
 			eh = path[depth].p_hdr;
@@ -2031,7 +2018,7 @@ prepend:
 	depth = ext_depth(handle, inode);
 	eh = path[depth].p_hdr;
 
-	if (le16_to_cpu(eh->eh_entries) < le16_to_cpu(eh->eh_max))
+	if (le16_to_cpu(eh->eh_entries) < le16_to_cpu(eh->eh_max)) 
 		goto has_space;
 
 	/* probably next leaf has space for us? */
@@ -2041,14 +2028,14 @@ prepend:
 	if (mlfs_ext_lblock(newext) > mlfs_ext_lblock(last_ex))
 		next_lb = mlfs_ext_next_leaf_block(path);
 
-	/* There is a possibility to add new extent in a sibling
+	/* There is a possibility to add new extent in a sibling 
 	 * extent block */
 	if (next_lb != EXT_MAX_BLOCKS) {
 		mlfs_lsm_debug("next leaf block - %u\n", next_lb);
 		BUG_ON(npath != NULL);
 
 		npath = mlfs_find_extent(handle, inode, next_lb, NULL, 0);
-		if (IS_ERR(npath))
+		if (IS_ERR(npath)) 
 			return PTR_ERR(npath);
 
 		BUG_ON(npath->p_depth != path->p_depth);
@@ -2060,7 +2047,7 @@ prepend:
 			mlfs_lsm_debug("next leaf isn't full(%d)\n",
 					le16_to_cpu(eh->eh_entries));
 
-			/* update path to new one since the newext will use
+			/* update path to new one since the newext will use 
 			 * the next extent block */
 			path = npath;
 			goto has_space;
@@ -2081,7 +2068,7 @@ prepend:
 	err = mlfs_ext_create_new_leaf(handle, inode, mb_flags, gb_flags,
 			ppath, newext);
 
-	if (err)
+	if (err) 
 		goto cleanup;
 
 	depth = ext_depth(handle, inode);
@@ -2091,7 +2078,7 @@ has_space:
 	/* At this point, it is guaranteed that there exists a room
 	 * for adding the new extent */
 
-	/* nearex is a pointer in a extent block and will be updated
+	/* nearex is a pointer in a extent block and will be updated 
 	 * to the proper location */
 	nearex = path[depth].p_ext;
 
@@ -2151,7 +2138,7 @@ merge:
 
 	/* time to correct all indexes above */
 	err = mlfs_ext_correct_indexes(handle, inode, path);
-	if (err)
+	if (err) 
 		goto cleanup;
 
 	err = mlfs_ext_dirty(handle, inode, path + path->p_depth);
@@ -2165,13 +2152,13 @@ cleanup:
 	return err;
 }
 
-static inline int get_default_free_blocks_flags(struct inode *inode)
+static inline int get_default_free_blocks_flags(struct inode *inode) 
 {
 	return 0;
 }
 
 /* FIXME!! we need to try to merge to left or right after zero-out  */
-static int mlfs_ext_zeroout(struct inode *inode, struct mlfs_extent *ex)
+static int mlfs_ext_zeroout(struct inode *inode, struct mlfs_extent *ex) 
 {
 	mlfs_fsblk_t ee_pblock;
 	unsigned int ee_len;
@@ -2186,7 +2173,7 @@ static int mlfs_ext_zeroout(struct inode *inode, struct mlfs_extent *ex)
 }
 
 static int mlfs_remove_blocks(handle_t *handle, struct inode *inode,
-		struct mlfs_extent *ex, unsigned long from, unsigned long to)
+		struct mlfs_extent *ex, unsigned long from, unsigned long to) 
 {
 	int i;
 
@@ -2210,7 +2197,7 @@ static int mlfs_remove_blocks(handle_t *handle, struct inode *inode,
  * last index in the block only
  */
 int mlfs_ext_rm_idx(handle_t *handle, struct inode *inode,
-		struct mlfs_ext_path *path, int depth)
+		struct mlfs_ext_path *path, int depth) 
 {
 	int err;
 	mlfs_fsblk_t leaf;
@@ -2230,7 +2217,7 @@ int mlfs_ext_rm_idx(handle_t *handle, struct inode *inode,
 
 	le16_add_cpu(&path->p_hdr->eh_entries, -1);
 
-	if ((err = mlfs_ext_dirty(handle, inode, path)))
+	if ((err = mlfs_ext_dirty(handle, inode, path))) 
 		return err;
 
 	mlfs_free_blocks(handle, inode, NULL, leaf, 1, 0);
@@ -2258,7 +2245,7 @@ int mlfs_ext_rm_idx(handle_t *handle, struct inode *inode,
 }
 
 static int mlfs_ext_rm_leaf(handle_t *handle, struct inode *inode,
-		struct mlfs_ext_path *path, mlfs_lblk_t start, mlfs_lblk_t end)
+		struct mlfs_ext_path *path, mlfs_lblk_t start, mlfs_lblk_t end) 
 {
 	int err = 0, correct_index = 0;
 	int depth = ext_depth(handle, inode);
@@ -2269,7 +2256,7 @@ static int mlfs_ext_rm_leaf(handle_t *handle, struct inode *inode,
 	unsigned short ex_ee_len;
 	struct mlfs_extent *ex;
 
-	mlfs_lsm_debug("truncate from %u(0x%x) to %u(0x%x)\n",
+	mlfs_lsm_debug("truncate from %u(0x%x) to %u(0x%x)\n", 
 			start << g_block_size_shift,
 			start << g_block_size_shift,
 			end << g_block_size_shift,
@@ -2280,7 +2267,7 @@ static int mlfs_ext_rm_leaf(handle_t *handle, struct inode *inode,
 	if (!path[depth].p_hdr) 
 		path[depth].p_hdr = direct_ext_block_hdr(path[depth].p_buf);
 #else
-	if (!path[depth].p_hdr)
+	if (!path[depth].p_hdr) 
 		path[depth].p_hdr = ext_block_hdr(path[depth].p_bh);
 #endif
 
@@ -2295,7 +2282,7 @@ static int mlfs_ext_rm_leaf(handle_t *handle, struct inode *inode,
 	ex_ee_block = le32_to_cpu(ex->ee_block);
 	ex_ee_len = mlfs_ext_get_actual_len(ex);
 
-	while (ex >= EXT_FIRST_EXTENT(eh) &&
+	while (ex >= EXT_FIRST_EXTENT(eh) && 
 			ex_ee_block + ex_ee_len > start) {
 
 		if (mlfs_ext_is_unwritten(ex))
@@ -2311,7 +2298,7 @@ static int mlfs_ext_rm_leaf(handle_t *handle, struct inode *inode,
 		b = ex_ee_block+ex_ee_len - 1 < end ?
 			ex_ee_block+ex_ee_len - 1 : end;
 
-		mlfs_lsm_debug("remove ext %u:[%d]%d - border %u:%u\n",
+		mlfs_lsm_debug("remove ext %u:[%d]%d - border %u:%u\n", 
 				ex_ee_block, unwritten, ex_ee_len, a, b);
 
 		/* If this extent is beyond the end of the hole, skip it */
@@ -2336,15 +2323,15 @@ static int mlfs_ext_rm_leaf(handle_t *handle, struct inode *inode,
 			num = 0;
 		}
 
-		if (ex == EXT_FIRST_EXTENT(eh))
+		if (ex == EXT_FIRST_EXTENT(eh)) 
 			correct_index = 1;
 
 		err = mlfs_remove_blocks(handle, inode, ex, a, b);
-		if (err)
+		if (err) 
 			goto out;
 
 		/* this extent is removed entirely mark slot unused */
-		if (num == 0)
+		if (num == 0) 
 			mlfs_ext_store_pblock(ex, 0);
 
 		ex->ee_len = cpu_to_le16(num);
@@ -2377,7 +2364,7 @@ static int mlfs_ext_rm_leaf(handle_t *handle, struct inode *inode,
 		}
 
 		err = mlfs_ext_dirty(handle, inode, path + depth);
-		if (err)
+		if (err) 
 			goto out;
 
 		mlfs_lsm_debug("new extent: %u:%u @ %lu\n", ex_ee_block, num,
@@ -2423,7 +2410,7 @@ out:
  */
 static int mlfs_split_extent_at(handle_t *handle,
 		struct inode *inode, struct mlfs_ext_path **ppath, mlfs_lblk_t split,
-		int split_flag, int flags)
+		int split_flag, int flags) 
 {
 	struct mlfs_ext_path *path = *ppath;
 	mlfs_fsblk_t newblock;
@@ -2434,7 +2421,7 @@ static int mlfs_split_extent_at(handle_t *handle,
 	int err = 0;
 
 	//mlfs_ext_show_leaf(inode, path);
-
+	
 	mlfs_lsm_debug("split at logical block %llu\n", (unsigned long long)split);
 
 	depth = ext_depth(handle, inode);
@@ -2467,7 +2454,7 @@ static int mlfs_split_extent_at(handle_t *handle,
 	memcpy(&orig_ex, ex, sizeof(orig_ex));
 	ex->ee_len = cpu_to_le16(split - ee_block);
 
-	if (split_flag & MLFS_EXT_MARK_UNWRIT1)
+	if (split_flag & MLFS_EXT_MARK_UNWRIT1) 
 		mlfs_ext_mark_unwritten(ex);
 
 	/*
@@ -2475,14 +2462,14 @@ static int mlfs_split_extent_at(handle_t *handle,
 	 * after mlfs_ext_insert_extent() returns,
 	 */
 	err = mlfs_ext_dirty(handle, inode, path + depth);
-	if (err)
+	if (err) 
 		goto fix_extent_len;
 
 	ex2 = &newex;
 	ex2->ee_block = cpu_to_le32(split);
 	ex2->ee_len = cpu_to_le16(ee_len - (split - ee_block));
 	mlfs_ext_store_pblock(ex2, newblock);
-	if (split_flag & MLFS_EXT_MARK_UNWRIT2)
+	if (split_flag & MLFS_EXT_MARK_UNWRIT2) 
 		mlfs_ext_mark_unwritten(ex2);
 
 	err = mlfs_ext_insert_extent(handle, inode, ppath, &newex, flags);
@@ -2507,13 +2494,13 @@ static int mlfs_split_extent_at(handle_t *handle,
 			mlfs_ext_store_pblock(&zero_ex, mlfs_ext_pblock(&orig_ex));
 		}
 
-		if (err)
+		if (err) 
 			goto fix_extent_len;
 		/* update the extent length and mark as initialized */
 		ex->ee_len = cpu_to_le16(ee_len);
 		mlfs_ext_try_to_merge(handle, inode, path, ex);
 		err = mlfs_ext_dirty(handle, inode, path + path->p_depth);
-		if (err)
+		if (err) 
 			goto fix_extent_len;
 
 		goto out;
@@ -2533,24 +2520,24 @@ fix_extent_len:
 /*
  * returns 1 if current index have to be freed (even partial)
  */
-static int inline mlfs_ext_more_to_rm(struct mlfs_ext_path *path)
+static int inline mlfs_ext_more_to_rm(struct mlfs_ext_path *path) 
 {
 	BUG_ON(path->p_idx == NULL);
 
-	if (path->p_idx < EXT_FIRST_INDEX(path->p_hdr))
+	if (path->p_idx < EXT_FIRST_INDEX(path->p_hdr)) 
 		return 0;
 
 	/*
 	 * if truncate on deeper level happened it it wasn't partial
 	 * so we have to consider current index for truncation
 	 */
-	if (le16_to_cpu(path->p_hdr->eh_entries) == path->p_block)
+	if (le16_to_cpu(path->p_hdr->eh_entries) == path->p_block) 
 		return 0;
 
 	return 1;
 }
 
-int mlfs_ext_remove_space(handle_t *handle, struct inode *inode,
+int mlfs_ext_remove_space(handle_t *handle, struct inode *inode, 
 		mlfs_lblk_t start, mlfs_lblk_t end)
 {
 	struct super_block *sb = get_inode_sb(handle->dev, inode);
@@ -2558,7 +2545,7 @@ int mlfs_ext_remove_space(handle_t *handle, struct inode *inode,
 	struct mlfs_ext_path *path;
 	int i = 0, err = 0;
 
-	mlfs_lsm_debug("truncate from %u(0x%x) to %u(0x%x)\n",
+	mlfs_lsm_debug("truncate from %u(0x%x) to %u(0x%x)\n", 
 			start << g_block_size_shift,
 			start << g_block_size_shift,
 			end << g_block_size_shift,
@@ -2578,7 +2565,7 @@ int mlfs_ext_remove_space(handle_t *handle, struct inode *inode,
 
 		/* find extent for or closest extent to this block */
 		path = mlfs_find_extent(handle, inode, end, NULL, MLFS_EX_NOCACHE);
-		if (IS_ERR(path))
+		if (IS_ERR(path)) 
 			return PTR_ERR(path);
 
 		//mlfs_ext_show_path(inode, path);
@@ -2650,7 +2637,7 @@ int mlfs_ext_remove_space(handle_t *handle, struct inode *inode,
 		path = (struct mlfs_ext_path *)mlfs_zalloc(
 				sizeof(struct mlfs_ext_path) * (depth + 1));
 
-		if (path == NULL)
+		if (path == NULL) 
 			return -ENOMEM;
 
 		path[0].p_maxdepth = path[0].p_depth = depth;
@@ -2722,7 +2709,7 @@ int mlfs_ext_remove_space(handle_t *handle, struct inode *inode,
 			}
 			bh = NULL;
 #else
-			bh = read_extent_tree_block(handle, inode,
+			bh = read_extent_tree_block(handle, inode, 
 					mlfs_idx_pblock(path[i].p_idx),
 					path[0].p_depth - (i + 1), 0);
 			if (IS_ERR(bh)) {
@@ -2780,7 +2767,7 @@ static int mlfs_ext_convert_to_initialized(handle_t *handle,
 		struct inode *inode,
 		struct mlfs_ext_path **ppath,
 		mlfs_lblk_t split,
-		unsigned long blocks, int flags)
+		unsigned long blocks, int flags) 
 {
 	int depth = ext_depth(handle, inode), err;
 	struct mlfs_extent *ex = (*ppath)[depth].p_ext;
@@ -2905,75 +2892,7 @@ int mlfs_hashfs_get_blocks(handle_t *handle, struct inode *inode,
  * return < 0, error case.
  *
  */
-
-int mlfs_api_get_blocks(handle_t *handle, struct inode *inode, 
-			struct mlfs_map_blocks_arr *map_arr, int flags)
-{
-
-	struct mlfs_ext_path *path = NULL;
-	struct mlfs_extent newex, *ex;
-	int goal, err = 0, depth;
-	mlfs_lblk_t allocated = 0;
-	mlfs_fsblk_t next, newblock;
-	int create;
-	uint64_t tsc_start = 0;
-
-	mlfs_assert(handle != NULL);
-
-	create = flags & MLFS_GET_BLOCKS_CREATE_DATA;
-
-    mlfs_assert(!create);
-
-    // iangneal: API init that doesn't affect timing.
-    if (unlikely(IDXAPI_IS_PER_FILE() && !inode->ext_idx)) {
-        init_api_idx_struct(handle->dev, inode);
-    }
-
-#ifdef STORAGE_PERF
-    //g_perf_stats.path_storage_nr = 0;
-	if (enable_perf_stats) {
-		tsc_start = asm_rdtscp();
-        start_cache_stats();
-    }
-#endif
-
-    ssize_t nblk;
-
-    if (IDXAPI_IS_PER_FILE()) {
-        nblk = FN(inode->ext_idx, im_lookup,
-                  inode->ext_idx, inode->inum, map_arr->m_lblk, 
-                  map_arr->m_len, map_arr->m_pblk);
-    } else if (IDXAPI_IS_GLOBAL()) {
-        nblk = FN(&hash_idx, im_lookup_parallel,
-                  &hash_idx, inode->inum, map_arr->m_lblk, 
-                          map_arr->m_len, map_arr->m_pblk);
-    } else {
-        panic("undefined path!\n");
-    }
-
-    nblk = nblk > map_arr->m_len ? map_arr->m_len : nblk;
-
-    if (enable_perf_stats) {
-        end_cache_stats(&(g_perf_stats.cache_stats));
-    }
-
-    return nblk;
-}
-
-/* Core interface API to get/allocate blocks of an inode
- *
- * return > 0, number of of blocks already mapped/allocated
- *          if create == 0 and these are pre-allocated blocks
- *          	buffer head is unmapped
- *          otherwise blocks are mapped
- *
- * return = 0, if plain look up failed (blocks have not been allocated)
- *          buffer head is unmapped
- *
- * return < 0, error case.
- *
- */
-int mlfs_ext_get_blocks(handle_t *handle, struct inode *inode,
+int mlfs_ext_get_blocks(handle_t *handle, struct inode *inode, 
 			struct mlfs_map_blocks *map, int flags)
 {
 	struct mlfs_ext_path *path = NULL;
@@ -2988,84 +2907,11 @@ int mlfs_ext_get_blocks(handle_t *handle, struct inode *inode,
 
 	create = flags & MLFS_GET_BLOCKS_CREATE_DATA;
 
-	// 이게 extent tree에서도 불릴까/
-    // iangneal: API init that doesn't affect timing.
-    if (unlikely(IDXAPI_IS_PER_FILE() && !inode->ext_idx)) {
-        init_api_idx_struct(handle->dev, inode);
-    }
-
-#ifdef STORAGE_PERF
-    //g_perf_stats.path_storage_nr = 0;
-	if (enable_perf_stats) {
-		tsc_start = asm_rdtscp();
-        start_cache_stats();
-    }
-#endif
-
-    if (IDXAPI_IS_PER_FILE()) {
-        if (create) {
-            ssize_t nblk = FN(inode->ext_idx, im_create,
-                              inode->ext_idx, inode->inum, map->m_lblk, 
-                              map->m_len, &map->m_pblk);
-            //map->m_len = nblk > 0 ? nblk : map->m_len;
-            //nblk = map->m_len < nblk ? map->m_len : nblk;
-
-            // Ensure write_ondisk_inode doesn't screw us.
-            /*
-            ext_meta_t *ext_meta = (ext_meta_t*)(inode->ext_idx->idx_metadata);
-            memmove(inode->_dinode->l1_addrs, ext_meta->et_direct_data, 64);
-            */
-            struct dinode di;
-            (void)read_ondisk_inode(handle->dev, inode->inum, &di);
-            memmove(inode->l1.addrs, di.l1_addrs, sizeof(addr_t) * (NDIRECT + 1));
-            //(void)sync_inode_from_dinode(inode, inode->_dinode);
-
-            nblk = nblk > map->m_len ? map->m_len : nblk;
-#ifdef KERNFS
-            if (enable_perf_stats) {
-                g_perf_stats.path_search_tsc += (asm_rdtscp() - tsc_start);
-                g_perf_stats.path_search_size += nblk;
-                g_perf_stats.path_search_nr++;
-                end_cache_stats(&(g_perf_stats.cache_stats));
-            }
-#endif
-            return nblk;
-        } else {
-            ssize_t nblk = FN(inode->ext_idx, im_lookup,
-                              inode->ext_idx, inode->inum, map->m_lblk, 
-                              map->m_len, &map->m_pblk);
-            nblk = nblk > map->m_len ? map->m_len : nblk;
-
-            if (enable_perf_stats) {
-                end_cache_stats(&(g_perf_stats.cache_stats));
-            }
-            //FN(inode->ext_idx, im_print_stats, inode->ext_idx);
-            return nblk;
-        }
-    } 
-
-    if (IDXAPI_IS_GLOBAL()) {
-        int hash_ret = mlfs_hash_get_blocks(handle, inode, map, flags, false);
-#ifdef KERNFS
-        if (enable_perf_stats) {
-            g_perf_stats.path_search_tsc += (asm_rdtscp() - tsc_start);
-            g_perf_stats.path_search_size += hash_ret;
-            g_perf_stats.path_search_nr++;
-            end_cache_stats(&(g_perf_stats.cache_stats));
-        }
-#else
-        if (enable_perf_stats) {
-            end_cache_stats(&(g_perf_stats.cache_stats));
-        }
-#endif
-        return hash_ret;
-    }
-
 	/*mutex_lock(&inode->truncate_mutex);*/
 
-#ifdef REUSE_PREVIOUS_PATH
+#ifdef REUSE_PREVIOUS_PATH 
 	if (create) {
-		mlfs_ext_drop_refs(inode->previous_path); 
+		mlfs_ext_drop_refs(inode->previous_path);
 		mlfs_free(inode->previous_path); //TODO: continue debugging
 		inode->previous_path = NULL;
 		goto find_ext_path;
@@ -3081,7 +2927,7 @@ int mlfs_ext_get_blocks(handle_t *handle, struct inode *inode,
 		mlfs_lblk_t ee_block = le32_to_cpu(ex->ee_block);
 		mlfs_fsblk_t ee_start = mlfs_ext_pblock(ex);
 		unsigned short ee_len;
-
+		
 		/*
 		 * unwritten extents are treated as holes, except that
 		 * we split out initialized portions during a write.
@@ -3099,13 +2945,11 @@ int mlfs_ext_get_blocks(handle_t *handle, struct inode *inode,
 				goto out;
 			}
 		}
-	}
+	} 
 
-#if 0
 	mlfs_ext_drop_refs(_path);
 	mlfs_free(_path);
 	inode->previous_path = NULL;
-#endif
 
 #endif
 find_ext_path:
@@ -3136,15 +2980,6 @@ find_ext_path:
 		g_perf_stats.extent_find_time += (asm_rdtscp() - tsc_start);
 #endif
 
-// hmm...
-#if defined(REUSE_PREVIOUS_PATH)
-    if (inode->previous_path) {
-        mlfs_ext_drop_refs(inode->previous_path);
-        mlfs_free(inode->previous_path);
-        inode->previous_path = NULL;
-    }
-#endif
-
 	depth = ext_depth(handle, inode);
 
 	/*
@@ -3159,7 +2994,7 @@ find_ext_path:
 		mlfs_lblk_t ee_block = le32_to_cpu(ex->ee_block);
 		mlfs_fsblk_t ee_start = mlfs_ext_pblock(ex);
 		unsigned short ee_len;
-
+		
 		/*
 		 * unwritten extents are treated as holes, except that
 		 * we split out initialized portions during a write.
@@ -3193,7 +3028,7 @@ find_ext_path:
 			} else if (mlfs_ext_is_unwritten(ex)) {
 				if (create) {
 					newblock = map->m_lblk - ee_block + ee_start;
-					err = mlfs_ext_convert_to_initialized(handle, inode,
+					err = mlfs_ext_convert_to_initialized(handle, inode, 
 							&path, map->m_lblk , allocated, flags);
 					if (err) {
 						goto out2;
@@ -3238,19 +3073,19 @@ find_ext_path:
 
 	allocated = next - map->m_lblk;
 
-	if ((flags & MLFS_GET_BLOCKS_PRE_IO) &&
+	if ((flags & MLFS_GET_BLOCKS_PRE_IO) && 
 			map->m_len > EXT_UNWRITTEN_MAX_LEN)
 		map->m_len = EXT_UNWRITTEN_MAX_LEN;
 
-	if (allocated > map->m_len)
+	if (allocated > map->m_len) 
 		allocated = map->m_len;
 
 	//goal = mlfs_ext_find_goal(inode, path, map->m_lblk);
-
-	newblock = mlfs_new_data_blocks(handle, inode,
+	
+	newblock = mlfs_new_data_blocks(handle, inode, 
 			goal, flags, &allocated, &err);
 
-	if (!newblock)
+	if (!newblock) 
 		goto out2;
 
 	/* try to insert new extent into found leaf and return */
@@ -3285,7 +3120,7 @@ find_ext_path:
 	map->m_flags |= MLFS_MAP_ALLOCATED;
 
 out:
-	if (allocated > map->m_len)
+	if (allocated > map->m_len) 
 		allocated = map->m_len;
 
 	//mlfs_ext_show_leaf(inode, path);
@@ -3315,18 +3150,6 @@ out2:
 
 	/*mutex_unlock(&inode->truncate_mutex);*/
 
-#ifdef KERNFS
-	if (enable_perf_stats) {
-		g_perf_stats.path_search_tsc += (asm_rdtscp() - tsc_start);
-        g_perf_stats.path_search_nr++;
-        end_cache_stats(&(g_perf_stats.cache_stats));
-    }
-#else
-    if (enable_perf_stats) {
-        end_cache_stats(&(g_perf_stats.cache_stats));
-    }
-#endif
-
 	return err ? err : allocated;
 }
 
@@ -3342,72 +3165,15 @@ int mlfs_indexing_truncate(handle_t *handle, struct inode *inode,
 int mlfs_ext_truncate(handle_t *handle, struct inode *inode, 
 		mlfs_lblk_t start, mlfs_lblk_t end) 
 {
-
-	if(IDXAPI_IS_HASHFS()) {
-		size_t rc = 0;
-		//printf("Start: %ld, End: %ld\n", start, end);
-		
-		for(size_t i = start; i <= end; ++i) {
-            if (end - i + 1 >= 8) {
-                int success = pmem_nvm_hash_table_remove_simd(inode->inum, i, 8);
-                if (success) {
-                    ++rc;
-                }
-                i += 8;
-            } else {
-                paddr_t index;
-                int success = pmem_nvm_hash_table_remove(inode->inum, i, &index);
-                if (success) {
-                    ++rc;
-                }
-                ++i;
-            }
-		}
-
-		//printf("removed %ld blocks\n", rc);
-		return 0;
-	}
 	int ret;
-    uint64_t tsc_start;
-    static bool notify = false;
-
+	
 	mlfs_assert(handle != NULL);
-    // iangneal: API init that doesn't affect timing.
-    if (unlikely(IDXAPI_IS_PER_FILE() && !inode->ext_idx)) {
-        init_api_idx_struct(handle->dev, inode);
-    }
-#if defined(STORAGE_PERF) && defined(KERNFS)
-	if (enable_perf_stats) {
-		tsc_start = asm_rdtscp();
-        start_cache_stats();
-    }
-#endif
 
-    if (IDXAPI_IS_PER_FILE()) {
-        ret = FN(inode->ext_idx, im_remove, inode->ext_idx, inode->inum, start, 
-                 (end - start) + 1);
-
-        if_then_panic(ret != (end - start) + 1, "didn't remove enough blocks! only %d / %u\n", ret, (end - start) + 1);
-
-        if (ret == (end - start + 1)) ret = 0;
-    } else if (IDXAPI_IS_GLOBAL()) {
-        ret = mlfs_hash_truncate(handle, inode, start, end);
-    } else {
-        ret = mlfs_ext_remove_space(handle, inode, start, end);
-    }
+	ret = mlfs_ext_remove_space(handle, inode, start, end);
 
 	/* Save modifications on i_blocks field of the inode. */
-	if (!ret)
+	if (!ret) 
 		ret = mlfs_mark_inode_dirty(handle->libfs, inode);
-
-#if defined(STORAGE_PERF) && defined(KERNFS)
-	if (enable_perf_stats) {
-		g_perf_stats.path_search_tsc += (asm_rdtscp() - tsc_start);
-        g_perf_stats.path_search_size += ret;
-        g_perf_stats.path_search_nr++;
-        end_cache_stats(&(g_perf_stats.cache_stats));
-    }
-#endif
 
 	return ret;
 }

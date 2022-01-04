@@ -5,12 +5,10 @@
 #include "global/types.h"
 #include "global/defs.h"
 #include "global/mem.h"
-#include "global/util.h"
 #include "global/ncx_slab.h"
 #include "ds/uthash.h"
 #include "ds/rbtree.h"
 #include "filesystem/shared.h"
-#include "cache_stats.h"
 #include "concurrency/synchronization.h"
 #include "distributed/rpc_interface.h"
 #include "experimental/leases.h"
@@ -19,11 +17,6 @@
 extern "C" {
 #endif
 
-// iangneal: for API init
-extern mem_man_fns_t strata_mem_man;
-extern callback_fns_t strata_callbacks;
-extern idx_spec_t strata_idx_spec;
-
 // libmlfs Disk layout:
 // [ boot block | sb block | inode blocks | free bitmap | data blocks | log blocks ]
 // [ inode block | free bitmap | data blocks | log blocks ] is a block group.
@@ -31,12 +24,8 @@ extern idx_spec_t strata_idx_spec;
 // Block group expension is not implemented yet.
 
 typedef struct mlfs_kernfs_stats {
-	uint64_t digest_time_tsc;
+	uint64_t digest_time_tsc; 
 	uint64_t path_search_tsc;
-    uint64_t path_search_size;
-	uint64_t path_search_nr;
-	uint64_t path_storage_nr;
-	uint64_t path_storage_tsc;
 	uint64_t replay_time_tsc;
 	uint64_t apply_time_tsc;
 	uint64_t digest_dir_tsc;
@@ -53,17 +42,6 @@ typedef struct mlfs_kernfs_stats {
 	uint64_t lease_contention_nr;
 	uint64_t lease_migration_nr;
 #endif
-    // block allocator
-    uint64_t balloc_tsc;
-    uint64_t balloc_nblk;
-    uint64_t balloc_nr;
-    uint64_t balloc_meta_nr;
-    // undo log
-    uint64_t undo_tsc;
-    uint64_t undo_nr;
-
-    // Indexing cache rates
-    cache_stats_t cache_stats;
 } kernfs_stats_t;
 
 extern struct disk_superblock disk_sb[g_n_devices + 1];
@@ -97,62 +75,6 @@ static inline struct inode *icache_find(uint32_t inum)
 	return inode;
 }
 
-static inline void init_api_idx_struct(uint8_t dev, struct inode *inode) {
-    // iangneal: indexing API init.
-    if (IDXAPI_IS_PER_FILE() && inode->itype == T_FILE) {
-        static bool notify = false;
-
-        if (!notify) {
-            printf("Init API extent trees!!!\n");
-            notify = true;
-        }
-
-        // paddr_range_t direct_extents = {
-        //     .pr_start      = get_inode_block(dev, inode->inum),
-        //     .pr_blk_offset = (off_t)((sizeof(struct dinode) * (inode->inum % IPB)) + 64),
-        //     .pr_nbytes     = 64
-        // };
-
-        // idx_struct_t *tmp = (idx_struct_t*)mlfs_zalloc(sizeof(*inode->ext_idx));
-        // int init_err;
-
-        // switch(g_idx_choice) {
-        //     case EXTENT_TREES_TOP_CACHED:
-        //         g_idx_cached = true;
-        //     case EXTENT_TREES:
-        //         init_err = extent_tree_fns.im_init_prealloc(&strata_idx_spec,
-        //                                                     &direct_extents,
-        //                                                     tmp);
-        //         break;
-        //     case LEVEL_HASH_TABLES:
-        //         init_err = levelhash_fns.im_init_prealloc(&strata_idx_spec,
-        //                                                   &direct_extents,
-        //                                                   tmp);
-        //         break;
-        //     case RADIX_TREES:
-        //         init_err = radixtree_fns.im_init_prealloc(&strata_idx_spec,
-        //                                                   &direct_extents,
-        //                                                   tmp);
-        //         break;
-        //     default:
-        //         panic("Invalid choice!!!\n");
-        // }
-
-        // FN(tmp, im_set_caching, tmp, g_idx_cached);
-
-        // if (init_err) {
-        //     fprintf(stderr, "Error in extent tree API init: %d\n", init_err);
-        //     panic("Could not initialize API per-inode structure!\n");
-        // }
-
-        // if (tmp->idx_fns->im_set_stats) {
-        //     FN(tmp, im_set_stats, tmp, enable_perf_stats);
-        // }
-
-        // inode->ext_idx = tmp;
-    }
-}
-
 static inline struct inode *icache_alloc_add(uint32_t inum)
 {
 	struct inode *inode;
@@ -182,7 +104,7 @@ static inline struct inode *icache_alloc_add(uint32_t inum)
 	pthread_mutex_init(&inode->i_mutex, NULL);
 
 	INIT_LIST_HEAD(&inode->i_slru_head);
-
+	
 	pthread_spin_lock(&icache_spinlock);
 
 	HASH_ADD(hash_handle, inode_hash, inum,

@@ -1,5 +1,4 @@
 #include "global/global.h"
-#include "api/file_indexing.h"
 
 indexing_choice_t g_idx_choice;
 bool g_idx_cached;

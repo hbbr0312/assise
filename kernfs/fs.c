@@ -4,7 +4,6 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
-#include <json-c/json.h>
 
 #include "mlfs/mlfs_user.h"
 #include "global/global.h"
@@ -20,9 +19,6 @@
 #include "extents_bh.h"
 #include "filesystem/slru.h"
 #include "migrate.h"
-#include "lpmem_ghash.h"
-
-#include "inode_hash.h"
 #include "lpmem_ghash.h"
 
 #ifdef DISTRIBUTED
@@ -434,15 +430,15 @@ int digest_file(uint8_t from_dev, uint8_t to_dev, int libfs_id, uint32_t file_in
 	offset_t cur_offset;
 	handle_t handle = {.libfs = libfs_id, .dev = to_dev};
 
-	mlfs_debug("[FILE] (%d->%d) inum %d offset %lu(0x%lx) length %u\n",
+	mlfs_debug("[FILE] (%d->%d) inum %d offset %lu(0x%lx) length %u\n", 
 			from_dev, to_dev, file_inum, offset, offset, length);
-	//calculate number of blocks to address
+
 	if (length < g_block_size_bytes)
 		nr_blocks = 1;
 	else {
 		nr_blocks = (length >> g_block_size_shift);
 
-		if (length % g_block_size_bytes != 0)
+		if (length % g_block_size_bytes != 0) 
 			nr_blocks++;
 	}
 
@@ -476,18 +472,11 @@ int digest_file(uint8_t from_dev, uint8_t to_dev, int libfs_id, uint32_t file_in
 	nr_digested_blocks = 0;
 	cur_offset = offset;
 	offset_in_block = offset % g_block_size_bytes;
-
-	// case 1. a single block writing: small size (< 4KB)
+	
+	// case 1. a single block writing: small size (< 4KB) 
 	// or a heading block of unaligned starting offset.
 	if ((length < g_block_size_bytes) || offset_in_block != 0) {
 		int _len = _min(length, (uint32_t)g_block_size_bytes - offset_in_block);
-		
-		if(IDXAPI_IS_HASHFS()) {
-			map_arr.m_lblk = (cur_offset >> g_block_size_shift);
-			map_arr.m_len = 1;
-			map_arr.m_flags = 0;
-			ret = mlfs_hashfs_get_blocks(&handle, file_inode, &map_arr,
-				MLFS_GET_BLOCKS_CREATE);
 
 		if(IDXAPI_IS_HASHFS()) {
 			map_arr.m_lblk = (cur_offset >> g_block_size_shift);
@@ -513,9 +502,9 @@ int digest_file(uint8_t from_dev, uint8_t to_dev, int libfs_id, uint32_t file_in
 
 		mlfs_assert(bh_data);
 
-		bh_data->b_data = data + offset_in_block; 
-		bh_data->b_size = _len; 
-		bh_data->b_offset = offset_in_block; 
+		bh_data->b_data = data + offset_in_block;
+		bh_data->b_size = _len;
+		bh_data->b_offset = offset_in_block;
 
 #ifdef MIGRATION
 		lru_key_t k = {
@@ -1541,10 +1530,10 @@ static int persist_dirty_objects_nvm(int log_id)
 	// flush extent tree changes
 	sync_all_buffers(g_bdev[g_root_dev]);
 
-	struct super_block *root_sb = sb[g_root_dev];
 	// save dirty inodes
 	//pthread_mutex_lock(&inode_dirty_mutex);
 	//pthread_spin_lock(&inode_dirty_mutex);
+
 	// flush writes to NVM (only relevant if writes are issued asynchronously using a DMA engine)
 	//mlfs_commit(g_root_dev);
 
@@ -1555,22 +1544,14 @@ static int persist_dirty_objects_nvm(int log_id)
 				g_root_dev, ip->inum, ip->size, log_id);
 		rb_erase(&ip->i_rb_node, &get_inode_sb(g_root_dev, ip)->s_dirty_root[log_id]);
 		write_ondisk_inode(ip);
-
-		if (g_idx_cached && ip->ext_idx) {
-            int api_err = FN(ip->ext_idx, im_persist, ip->ext_idx);
-            if (api_err) return api_err;
-        }
 	}
 
-    if (g_idx_cached && IDXAPI_IS_GLOBAL()) {
-        int api_err = mlfs_hash_persist();
-        if (api_err) return api_err;
-    }
+
 	//pthread_spin_unlock(&inode_dirty_mutex);
 
 	// save block allocation bitmap
 	store_all_bitmap(g_root_dev, sb[g_root_dev]->s_blk_bitmap);
-
+	
 	return 0;
 }
 
@@ -2204,10 +2185,6 @@ void init_fs(void)
 	else
 		enable_perf_stats = 0;
 
-	if (IDXAPI_IS_GLOBAL()) {
-        init_hash(sb[g_root_dev], enable_perf_stats);
-    }
-
 	mlfs_debug("%s\n", "LIBFS is initialized");
 
 	thread_pool = thpool_init(8);
@@ -2767,8 +2744,7 @@ void read_superblock(uint8_t dev)
 			disk_sb[dev].ndatablocks, 
 			disk_sb[dev].ninodes,
 			disk_sb[dev].inode_start, 
-			disk_sb[dev].bmap_start,
-			disk_sb[dev].api_metadata_block,
+			disk_sb[dev].bmap_start, 
 			disk_sb[dev].datablock_start,
 			disk_sb[dev].log_start);
 

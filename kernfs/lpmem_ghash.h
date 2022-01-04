@@ -48,6 +48,7 @@ extern "C" {
 // local includes
 #include "hash_functions.h"
 
+
 #define HASHFS_TOMBSTONE_VAL ((paddr_t)~0) - 1
 #define HASHFS_EMPTY_VAL (paddr_t)~0
 #define HASHFS_ENT_IS_TOMBSTONE(x) (x == ((paddr_t)~0) - 1)

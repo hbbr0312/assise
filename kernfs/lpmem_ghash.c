@@ -634,6 +634,7 @@ pmem_nvm_hash_table_lookup_internal_simd8(__m512i *inums, __m512i *lblks, __m256
   return _cvtmask8_u32(failure) == 0;
 }
 
+
 static inline int 
 pmem_nvm_hash_table_lookup_internal_simd4(__m256i *inums, __m256i *lblks, __m128i *val, __mmask8 to_find) {
     //create keys vector
