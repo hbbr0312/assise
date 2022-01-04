@@ -11,6 +11,7 @@
 #include "storage/storage.h"
 #include "mlfs/kerncompat.h"
 #include "io/balloc.h"
+#include "filesystem/lpmem_ghash.h"
 
 #if MLFS_LEASE
 #include "experimental/leases.h"
@@ -331,6 +332,12 @@ int main(int argc, char *argv[])
 	bitmap_bits_set_range(sb[g_root_dev]->s_blk_bitmap, 0, nmeta);
 	write_bitmap(nmeta);
 
+	g_idx_choice = get_indexing_choice();
+	// hashtable init
+	if(IDXAPI_IS_HASHFS()) {
+		struct super_block *sblk = sb[g_root_dev];
+		pmem_nvm_hash_table_new(sblk->ondisk, NULL);	
+	}
 	// Create / directory
 	rootino = mkfs_ialloc(dev_id, T_DIR);
 	printf("== create / directory\n");
@@ -431,6 +438,9 @@ exit:
 		//storage_hdd.commit(dev_id, 0, 0, 0, 0);
 		storage_hdd.commit(dev_id);
 
+	if(IDXAPI_IS_HASHFS() && dev_id == g_root_dev) {
+		pmem_nvm_hash_table_close();
+	}
 	exit(0);
 }
 
@@ -554,7 +564,9 @@ void iappend(uint8_t dev, uint32_t inum, void *xp, int n)
 	int ret;
 	handle_t handle = {.dev = g_root_dev};
 	struct mlfs_map_blocks map;
+	struct mlfs_map_blocks_arr map_arr;
 	addr_t block_address;
+	mlfs_fsblk_t m_pblk;
 
 	read_inode(dev, inum, &din);
 
@@ -595,22 +607,34 @@ void iappend(uint8_t dev, uint32_t inum, void *xp, int n)
 		printf("cannot support cross block IO yet");
 		exit(-1);
 	}
+	if (IDXAPI_IS_HASHFS()) {
+		map_arr.m_lblk = (off >> g_block_size_shift);
+		map_arr.m_len = (n >> g_block_size_shift);
+		map_arr.m_len += n % g_block_size_bytes ? 1 : 0;
+		map_arr.m_flags = 0;
 
-	map.m_lblk = (off >> g_block_size_shift);
-	map.m_len = (n >> g_block_size_shift);
-	map.m_len += n % g_block_size_bytes ? 1 : 0;
-	map.m_flags = 0;
+		ret = mlfs_hashfs_get_blocks(&handle, &inode, &map_arr, MLFS_GET_BLOCKS_CREATE_DATA);
 
-	ret = mlfs_ext_get_blocks(&handle, &inode, &map, MLFS_GET_BLOCKS_CREATE_DATA);
+		// assert(ret == map_arr.m_len);
+		m_pblk = map_arr.m_pblk[0];
+	} else {
+		map.m_lblk = (off >> g_block_size_shift);
+		map.m_len = (n >> g_block_size_shift);
+		map.m_len += n % g_block_size_bytes ? 1 : 0;
+		map.m_flags = 0;
 
-	assert(ret == map.m_len);
+		ret = mlfs_ext_get_blocks(&handle, &inode, &map, MLFS_GET_BLOCKS_CREATE_DATA);
 
-	rsect(map.m_pblk, buf);	
+		assert(ret == map.m_len);
+		m_pblk = map.m_pblk;
+	}
+
+	rsect(m_pblk, buf);	
 
 	memcpy(buf + off_in_block, (uint8_t *)data, n);
-	wsect(map.m_pblk, buf);
+	wsect(m_pblk, buf);
 	off += n;
-	printf("write inode inum %d data: blocknr = %lu\n", inode.inum, map.m_pblk);
+	printf("write inode inum %d data: blocknr = %lu\n", inode.inum, m_pblk);
 
 	sync_all_buffers(g_bdev[g_root_dev]);
 	store_all_bitmap(g_root_dev, sb[g_root_dev]->s_blk_bitmap);

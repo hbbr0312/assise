@@ -35,8 +35,8 @@ extern "C" {
  cat /sys/devices/platform/e820_pmem/ndbus0/region0/size
 */
 
-// # of devices
-#define g_n_devices	3
+// // # of devices
+// #define g_n_devices	3
 
 // Device indices
 // Note: Log area can be either use a distinct device or share

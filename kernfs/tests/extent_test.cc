@@ -285,7 +285,7 @@ void ExtentTest::run_multi_block_test(mlfs_lblk_t from,
 
 	cout << "truncate all allocated blocks" << endl;
 
-	mlfs_ext_truncate(inode, 0, to >> g_block_size_shift);
+	mlfs_indexing_truncate(inode, 0, to >> g_block_size_shift);
 
 	printf("** Total used block %d\n", 
 			bitmap_weight((uint64_t *)sb[g_root_dev].s_blk_bitmap->bitmap,
@@ -307,7 +307,7 @@ void ExtentTest::run_ftruncate_test(mlfs_lblk_t from,
 		delete_list.push_back(dist(mt));
 
 	for (auto it: delete_list) {
-		ret = mlfs_ext_truncate(inode, (it >> g_block_size_shift), 
+		ret = mlfs_indexing_truncate(inode, (it >> g_block_size_shift), 
 				(it >> g_block_size_shift) + 1);
 
 		fprintf(stdout, "truncate %u, ret %d\n", it, ret);

@@ -9,7 +9,6 @@
 extern "C" {
 #endif
 
-void break_here(void);
 void fs_start_trans(struct super_block *sb);
 void fs_stop_trans(struct super_block *sb);
 

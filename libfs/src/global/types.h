@@ -22,6 +22,8 @@ typedef UT_hash_handle	mlfs_hash_t;
 
 typedef uint32_t mlfs_lblk_t;
 typedef uint64_t mlfs_fsblk_t;
+typedef mlfs_fsblk_t paddr_t;
+typedef mlfs_lblk_t laddr_t;
 
 #define LINUX_DT_UNKNOWN  0
 #define LINUX_DT_FIFO     1

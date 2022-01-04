@@ -5,6 +5,7 @@
 #include "extents_bh.h"
 #include "global/util.h"
 #include "io/balloc.h"
+#include "lpmem_ghash.h"
 #ifdef KERNFS
 #include "migrate.h"
 #endif
@@ -338,12 +339,15 @@ int mlfs_ext_tree_init(handle_t *handle, struct inode *inode)
 {
 	struct mlfs_extent_header *eh;
 
-	eh = ext_inode_hdr(handle, inode);
-	eh->eh_depth = 0;
-	eh->eh_entries = 0;
-	eh->eh_magic = cpu_to_le16(MLFS_EXT_MAGIC);
-	eh->eh_max = cpu_to_le16(mlfs_ext_space_root(inode, 0));
-	mlfs_mark_inode_dirty(handle->libfs, inode);
+	if (g_idx_choice == NONE) {
+		eh = ext_inode_hdr(handle, inode);
+		eh->eh_depth = 0;
+		eh->eh_entries = 0;
+		eh->eh_magic = cpu_to_le16(MLFS_EXT_MAGIC);
+		eh->eh_max = cpu_to_le16(mlfs_ext_space_root(inode, 0));
+		mlfs_mark_inode_dirty(handle->libfs, inode);
+	}
+
 	return 0;
 }
 
@@ -2835,6 +2839,46 @@ static mlfs_lblk_t mlfs_ext_determine_hole(handle_t *handle, struct inode *inode
 	return len;
 }
 
+int mlfs_hashfs_get_blocks(handle_t *handle, struct inode *inode, 
+			struct mlfs_map_blocks_arr *map_arr, int flags)
+{
+    assert(map_arr->m_len <= 8 && "fs_get_blocks m_len > 8");
+    struct super_block *sblk = sb[g_root_dev];
+	int create_data = flags & MLFS_GET_BLOCKS_CREATE_DATA;
+	int create_meta = flags & MLFS_GET_BLOCKS_CREATE_META;
+	int success = 0;
+
+	printf("(hbbr) mlfs_hashfs_get_blocks: inum: %d\n", inode->inum);
+	// if(create_data || create_meta)
+	// 	success = pmem_nvm_hash_table_insert_simd(inode->inum, map_arr->m_lblk, map_arr->m_len, map_arr->m_pblk);
+	// else
+	// 	success = pmem_nvm_hash_table_lookup_simd(inode->inum, map_arr->m_lblk, map_arr->m_len, map_arr->m_pblk);
+	
+	// return map_arr->m_len;
+	
+	for(size_t i = 0; i < map_arr->m_len; ++i) {
+		paddr_t index;
+		if(create_data || create_meta) {
+			success = pmem_nvm_hash_table_insert(inode->inum, map_arr->m_lblk + i, &index);
+		}
+		if(!success) {
+			//block already existed, so this does nothing
+			printf("block already existed\n");
+			return i;
+		} else {
+			int found = pmem_nvm_hash_table_lookup(inode->inum, map_arr->m_lblk + i, &index);
+			
+			if(!found) {
+				//did not find the requested block
+				printf("block not found\n");
+				return i;
+			}	
+		}
+		map_arr->m_pblk[i] = index + sblk->ondisk->datablock_start;
+	}
+	return map_arr->m_len;
+}
+
 /* Core interface API to get/allocate blocks of an inode 
  *
  * return > 0, number of of blocks already mapped/allocated
@@ -2969,7 +3013,7 @@ find_ext_path:
 			// by a new API.
 			if (map->m_flags & MLFS_MAP_LOG_ALLOC) {
 				int ret;
-				ret = mlfs_ext_truncate(handle, inode, map->m_lblk, 
+				ret = mlfs_indexing_truncate(handle, inode, map->m_lblk, 
 						map->m_lblk + map->m_len - 1);
 				// Set flags to block allocator to do log-structured allocation.
 				//flags &= ~MLFS_GET_BLOCKS_CREATE_DATA;
@@ -3109,6 +3153,15 @@ out2:
 	return err ? err : allocated;
 }
 
+int mlfs_indexing_truncate(handle_t *handle, struct inode *inode, 
+		mlfs_lblk_t start, mlfs_lblk_t end)
+{
+	if (IDXAPI_IS_HASHFS())
+		return mlfs_hashfs_truncate(handle, inode, start, end);
+	else
+		return mlfs_ext_truncate(handle, inode, start, end);
+}
+
 int mlfs_ext_truncate(handle_t *handle, struct inode *inode, 
 		mlfs_lblk_t start, mlfs_lblk_t end) 
 {
@@ -3123,4 +3176,31 @@ int mlfs_ext_truncate(handle_t *handle, struct inode *inode,
 		ret = mlfs_mark_inode_dirty(handle->libfs, inode);
 
 	return ret;
+}
+
+int mlfs_hashfs_truncate(handle_t *handle, struct inode *inode, 
+		mlfs_lblk_t start, mlfs_lblk_t end)
+{
+	size_t rc = 0;
+	//printf("Start: %ld, End: %ld\n", start, end);
+	
+	for(size_t i = start; i <= end; ++i) {
+		if (false) { // && end - i + 1 >= 8
+			int success = pmem_nvm_hash_table_remove_simd(inode->inum, i, 8);
+			if (success) {
+				++rc;
+			}
+			i += 8;
+		} else {
+			paddr_t index;
+			int success = pmem_nvm_hash_table_remove(inode->inum, i, &index);
+			if (success) {
+				++rc;
+			}
+			++i;
+		}
+	}
+
+	//printf("removed %ld blocks\n", rc);
+	return 0;
 }

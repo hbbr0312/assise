@@ -74,6 +74,16 @@ struct dlookup_data {
 	struct inode *inode;
 };
 
+typedef struct bmap_request_arr {
+	// input
+	offset_t start_offset; //offset from file start in bytes
+	uint32_t blk_count; //num_blocks
+	// output
+	addr_t block_no[MAX_GET_BLOCKS_RETURN];
+	uint32_t blk_count_found;
+	uint8_t dev;
+} bmap_req_arr_t;
+
 typedef struct bmap_request {
 	// input 
 	offset_t start_offset;
@@ -83,6 +93,17 @@ typedef struct bmap_request {
 	uint32_t blk_count_found;
 	uint8_t dev;
 } bmap_req_t;
+
+typedef struct pblk_lookup_arr {
+	addr_t m_pblk[MAX_NUM_BLOCKS_LOOKUP];
+	uint32_t m_lens[MAX_NUM_BLOCKS_LOOKUP];
+	offset_t m_offsets[MAX_NUM_BLOCKS_LOOKUP];
+	addr_t *m_pblk_dyn;
+	uint32_t *m_lens_dyn;
+	offset_t *m_offsets_dyn;
+	uint8_t dyn;
+	uint32_t size;
+} pblk_lookup_t;
 
 // statistics
 typedef struct mlfs_libfs_stats {
@@ -692,6 +713,7 @@ void iunlockput(struct inode*);
 void iupdate(struct inode*);
 int itrunc(struct inode *inode, offset_t length);
 int bmap(struct inode *ip, struct bmap_request *bmap_req);
+int bmap_hashfs(struct inode *ip, struct bmap_request_arr *bmap_req_arr);
 
 struct inode* dir_lookup(struct inode*, char*, offset_t *);
 struct mlfs_dirent *dir_add_links(struct inode *dir_inode, uint32_t inum, uint32_t parent_inum);

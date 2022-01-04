@@ -8,7 +8,6 @@ void fs_start_trans(struct super_block *sb) { UNUSED(sb); }
 
 void fs_stop_trans(struct super_block *sb) { UNUSED(sb); }
 
-void break_here(void) {;}
 
 struct buffer_head *fs_bread(uint8_t dev, mlfs_fsblk_t block,
 		int *ret)

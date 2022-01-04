@@ -529,7 +529,7 @@ again:
 		mlfs_assert((end << g_block_size_shift) <= file_inode->size);
 
 		handle.dev = from_dev;
-		ret = mlfs_ext_truncate(&handle, file_inode, start, end - 1);
+		ret = mlfs_indexing_truncate(&handle, file_inode, start, end - 1);
 
 		if (ret != 0) {
 			list_del_init(&l->list);
